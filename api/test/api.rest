@@ -1,0 +1,26 @@
+
+### Register
+POST http://localhost:3000/auth/register
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "123456",
+  "name": "Test User"
+}
+
+### Login
+# @name Login
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "123456"
+}
+
+### Get Profile (需要先登录获取 token)
+@token = {{Login.response.body.access_token}}
+### 
+GET http://localhost:3000/auth/profile
+Authorization: Bearer {{token}}
