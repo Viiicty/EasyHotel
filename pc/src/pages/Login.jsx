@@ -174,7 +174,7 @@ function Login() {
           欢迎使用 EasyHotel
         </Title>
         <Text type="secondary" style={{ fontSize: '16px', marginBottom: '40px' }}>
-          专业的酒店管理系统，为您提供便捷的服务
+          不太专业的酒店管理系统，为您提供并不便捷的服务
         </Text>
 
         <Divider style={{ width: '300px', marginBottom: '40px' }} />
@@ -183,12 +183,12 @@ function Login() {
           <Title level={4} style={{ marginBottom: '8px' }}>
             EasyHotel
           </Title>
-          <Text type="secondary">专业的酒店管理系统</Text>
+          <Text type="secondary">不太专业的酒店管理系统</Text>
         </div>
 
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <Text type="secondary">
-            地址：北京市朝阳区建国路88号
+            地址：上海市徐汇区太原路不知道多少弄9号
           </Text>
           <br />
           <Text type="secondary">

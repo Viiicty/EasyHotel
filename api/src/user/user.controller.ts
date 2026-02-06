@@ -1,7 +1,8 @@
 import { Controller, Post, Body, UseGuards, Get, Request } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { UserService } from './user.service';
 import { AuthService } from './auth.service';
+import { Public } from '../common/public.decorator';
 
 @Controller('auth')
 export class UserController {
@@ -10,6 +11,7 @@ export class UserController {
     private authService: AuthService,
   ) {}
 
+  @Public()
   @Post('register')
   async register(
     @Body('email') email: string,
@@ -17,26 +19,19 @@ export class UserController {
     @Body('name') name: string,
   ) {
     const user = await this.userService.create(email, password, name);
-    // 不返回密码
     const result = { ...user };
+    delete result.passwordHash;
     return result;
   }
 
+  @Public()
   @Post('login')
   async login(@Body('email') email: string, @Body('password') password: string) {
     const user = await this.authService.validateUser(email, password);
-    console.log(user)
-    const loginResult = await this.authService.login(user);
-    return {
-      code: 200,
-      data: {
-        user,
-        access_token: loginResult.access_token
-      }
-    };
+    const token = await this.authService.login(user);
+    return { user, ...token }
   }
 
-  @UseGuards(AuthGuard())
   @Get('profile')
   async getProfile(@Request() req) {
     return req.user;

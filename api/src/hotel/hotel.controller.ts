@@ -4,7 +4,6 @@ import { HotelService } from './hotel.service';
 import { HotelEntity } from './hotel.entity';
 
 @Controller('hotel')
-@UseGuards(AuthGuard())
 export class HotelController {
   constructor(private readonly hotelService: HotelService) {}
 

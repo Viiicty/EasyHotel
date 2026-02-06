@@ -11,7 +11,7 @@ Content-Type: application/json
 
 ### Login
 # @name Login
-POST http://localhost:3000/auth/login
+POST http://localhost:8888/auth/login
 Content-Type: application/json
 
 {
@@ -20,7 +20,7 @@ Content-Type: application/json
 }
 
 ### Get Profile (需要先登录获取 token)
-@token = {{Login.response.body.access_token}}
+@token = {{Login.response.body.data.access_token}}
 ### 
-GET http://localhost:3000/auth/profile
+GET http://localhost:8888/auth/profile
 Authorization: Bearer {{token}}

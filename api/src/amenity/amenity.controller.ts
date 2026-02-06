@@ -27,7 +27,6 @@ export class AmenityController {
   }
 
   @Put(':id')
-  @UseGuards(AuthGuard())
   async update(@Param('id') id: string, @Body() amenityData: Partial<AmenityEntity>, @Request() req): Promise<AmenityEntity> {
     return this.amenityService.update(id, {
       ...amenityData,
@@ -36,7 +35,6 @@ export class AmenityController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard())
   async remove(@Param('id') id: string): Promise<void> {
     return this.amenityService.remove(id);
   }

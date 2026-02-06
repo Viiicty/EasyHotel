@@ -8,7 +8,6 @@ export class RoomTypeController {
   constructor(private readonly roomTypeService: RoomTypeService) {}
 
   @Post()
-  @UseGuards(AuthGuard())
   async create(@Body() roomTypeData: Partial<RoomTypeEntity>, @Request() req): Promise<RoomTypeEntity> {
     return this.roomTypeService.create({
       ...roomTypeData,
@@ -27,7 +26,6 @@ export class RoomTypeController {
   }
 
   @Put(':id')
-  @UseGuards(AuthGuard())
   async update(@Param('id') id: string, @Body() roomTypeData: Partial<RoomTypeEntity>, @Request() req): Promise<RoomTypeEntity> {
     return this.roomTypeService.update(id, {
       ...roomTypeData,
@@ -36,7 +34,6 @@ export class RoomTypeController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard())
   async remove(@Param('id') id: string): Promise<void> {
     return this.roomTypeService.remove(id);
   }
@@ -47,19 +44,16 @@ export class RoomTypeController {
   }
 
   @Post(':id/submit')
-  @UseGuards(AuthGuard())
   async submitForReview(@Param('id') id: string, @Request() req): Promise<RoomTypeEntity> {
     return this.roomTypeService.submitForReview(id, req.user.id);
   }
 
   @Put(':id/approve')
-  @UseGuards(AuthGuard())
   async approve(@Param('id') id: string, @Request() req): Promise<RoomTypeEntity> {
     return this.roomTypeService.approve(id, req.user.id);
   }
 
   @Put(':id/reject')
-  @UseGuards(AuthGuard())
   async reject(@Param('id') id: string, @Request() req): Promise<RoomTypeEntity> {
     return this.roomTypeService.reject(id, req.user.id);
   }

@@ -2,6 +2,10 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './user/user.module';
+import { HotelModule } from './hotel/hotel.module';
+import { JwtAuthGuard } from './common/jwt-auth.guard';
+import { APP_GUARD } from '@nestjs/core';
+import { RoomTypeModule } from './room-type/room-type.module';
 
 @Module({
   imports: [
@@ -14,11 +18,17 @@ import { UserModule } from './user/user.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
       autoLoadEntities: true,
-      synchronize: true, // 开发环境使用，生产环境应设置为 false
+      synchronize: true,
     }),
     UserModule,
+    HotelModule,
+    RoomTypeModule,
   ],
-  controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
 export class AppModule {}

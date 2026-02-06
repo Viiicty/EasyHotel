@@ -9,9 +9,6 @@ import {
   SearchOutlined,
   SendOutlined
 } from '@ant-design/icons'
-
-const API_BASE = 'http://localhost:8888'
-
 function RoomType() {
   const [hotels, setHotels] = useState([])
   const [selectedHotel, setSelectedHotel] = useState(null)
@@ -39,14 +36,15 @@ function RoomType() {
     setApiError(null)
     try {
       const token = getToken()
-      const response = await fetch(`${API_BASE}/hotel`, {
+      console.log('token:', token)
+      const response = await fetch(`/api/hotel`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
       
       if (response.ok) {
-        const result = await response.json()
+        const { data: result } = await response.json()
         setHotels(result || [])
       } else {
         const errorData = await response.json().catch(() => ({}))
@@ -67,7 +65,7 @@ function RoomType() {
     setLoading(true)
     try {
       const token = getToken()
-      const response = await fetch(`${API_BASE}/room-type/hotel/${hotelId}`, {
+      const response = await fetch(`/api/room-type/hotel/${hotelId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -233,7 +231,7 @@ function RoomType() {
       }
 
       if (editingRoom) {
-        const response = await fetch(`${API_BASE}/room-type/${editingRoom.id}`, {
+        const response = await fetch(`/api/room-type/${editingRoom.id}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -250,7 +248,7 @@ function RoomType() {
           message.error(errorData.message || '修改失败')
         }
       } else {
-        const response = await fetch(`${API_BASE}/room-type`, {
+        const response = await fetch(`/api/room-type`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -276,7 +274,7 @@ function RoomType() {
   const handleSubmitForReview = async (record) => {
     try {
       const token = getToken()
-      const response = await fetch(`${API_BASE}/room-type/${record.id}/submit`, {
+      const response = await fetch(`/api/room-type/${record.id}/submit`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

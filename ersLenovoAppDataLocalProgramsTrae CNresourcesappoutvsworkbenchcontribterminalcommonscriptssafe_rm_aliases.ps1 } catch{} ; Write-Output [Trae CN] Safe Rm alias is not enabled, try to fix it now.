@@ -1,0 +1,86 @@
+warning: LF will be replaced by CRLF in api/test/api.rest.
+The file will have its original line endings in your working directory
+[1mdiff --git a/api/test/api.rest b/api/test/api.rest[m
+[1mindex 5b28f55..2945b2c 100644[m
+[1m--- a/api/test/api.rest[m
+[1m+++ b/api/test/api.rest[m
+[36m@@ -1,17 +1,16 @@[m
+[31m-[m
+ ### Register[m
+[31m-POST http://localhost:3000/auth/register[m
+[32m+[m[32mPOST http://localhost:8888/auth/register[m
+ Content-Type: application/json[m
+ [m
+ {[m
+[31m-  "email": "test@example.com",[m
+[32m+[m[32m  "email": "test3@example.com",[m
+   "password": "123456",[m
+   "name": "Test User"[m
+ }[m
+ [m
+ ### Login[m
+ # @name Login[m
+[31m-POST http://localhost:3000/auth/login[m
+[32m+[m[32mPOST http://localhost:8888/auth/login[m
+ Content-Type: application/json[m
+ [m
+ {[m
+[36m@@ -20,7 +19,53 @@[m [mContent-Type: application/json[m
+ }[m
+ [m
+ ### Get Profile (需要先登录获取 token)[m
+[31m-@token = {{Login.response.body.access_token}}[m
+[31m-### [m
+[31m-GET http://localhost:3000/auth/profile[m
+[31m-Authorization: Bearer {{token}}[m
+\ No newline at end of file[m
+[32m+[m[32m@token = {{Login.response.body.data.access_token}}[m
+[32m+[m[32m# @merchantId = {{Login.response.body.user.id}}[m
+[32m+[m[32mGET http://localhost:8888/auth/profile[m
+[32m+[m[32mAuthorization: Bearer {{token}}[m
+[32m+[m
+[32m+[m[32m### Create Hotel (需要认证)[m
+[32m+[m[32mPOST http://localhost:8888/hotel[m
+[32m+[m[32mAuthorization: Bearer {{token}}[m
+[32m+[m[32mContent-Type: application/json[m
+[32m+[m
+[32m+[m[32m{[m
+[32m+[m[32m  "merchantId":"4237d6fb-3905-4074-95d5-c50a4834eead",[m
+[32m+[m[32m  "nameZh": "测试酒店",[m
+[32m+[m[32m  "nameEn": "Test Hotel",[m
+[32m+[m[32m  "cityCode": "BJ",[m
+[32m+[m[32m  "address": "北京市朝阳区建国路88号",[m
+[32m+[m[32m  "starLevel": 5,[m
+[32m+[m[32m  "openedDate": "2020-01-01T00:00:00.000Z",[m
+[32m+[m[32m  "lat": 39.9042,[m
+[32m+[m[32m  "lng": 116.4074,[m
+[32m+[m[32m  "status": "1",[m
+[32m+[m[32m  "minPrice": 500[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m### Get All Hotels[m
+[32m+[m[32mGET http://localhost:8888/hotel[m
+[32m+[m[32mAuthorization: Bearer {{token}}[m
+[32m+[m
+[32m+[m[32m### Get Hotel by ID[m
+[32m+[m[32mGET http://localhost:8888/hotel/merchant/4237d6fb-3905-4074-95d5-c50a4834eead[m
+[32m+[m
+[32m+[m[32m### Update Hotel (需要认证)[m
+[32m+[m[32mPUT http://localhost:8888/hotel/f5e94c3a-53d6-4df4-a1a3-e43c9befb279[m
+[32m+[m[32mAuthorization: Bearer {{token}}[m
+[32m+[m[32mContent-Type: application/json[m
+[32m+[m
+[32m+[m[32m{[m
+[32m+[m[32m  "nameZh": "测试酒店（已更新）",[m
+[32m+[m[32m  "minPrice": 600[m
+[32m+[m[32m}[m
+[32m+[m[32m### Delete Hotel (需要认证)[m
+[32m+[m[32mDELETE http://localhost:8888/hotel/f5e94c3a-53d6-4df4-a1a3-e43c9befb279[m
+[32m+[m[32mAuthorization: Bearer {{token}}[m
+[32m+[m[32mContent-Type: application/json[m
+[32m+[m
+[32m+[m[32m### Get Hotels by Merchant ID[m
+[32m+[m[32mGET http://localhost:8888/hotel/merchant/user-id-here[m
+[32m+[m
+[32m+[m[32m### Get Hotels by City Code[m
+[32m+[m[32mGET http://localhost:8888/hotel/city/BJ[m
