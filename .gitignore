@@ -1,2 +1,9 @@
 /api/node_modules
 /api/dist
+/pc/node_modules
+/pc/dist
+/pc/.npm-cache
+/min/node_modules
+/min/dist
+/min/.npm-cache
+/min/.swc

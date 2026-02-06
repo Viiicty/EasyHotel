@@ -1,0 +1,8 @@
+.App {
+  min-height: 100vh;
+}
+
+.ant-card .ant-card-head {
+  min-height: 90px;
+  font-size: 23px;
+}

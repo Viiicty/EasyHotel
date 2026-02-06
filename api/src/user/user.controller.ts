@@ -26,7 +26,14 @@ export class UserController {
   async login(@Body('email') email: string, @Body('password') password: string) {
     const user = await this.authService.validateUser(email, password);
     console.log(user)
-    return this.authService.login(user);
+    const loginResult = await this.authService.login(user);
+    return {
+      code: 200,
+      data: {
+        user,
+        access_token: loginResult.access_token
+      }
+    };
   }
 
   @UseGuards(AuthGuard())
