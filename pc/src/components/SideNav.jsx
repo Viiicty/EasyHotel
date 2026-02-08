@@ -117,6 +117,13 @@ function SideNav({ collapsed, onCollapse }) {
     return [pathname]
   }
 
+  const getDefaultOpenKeys = () => {
+    if (isAdmin) {
+      return []
+    }
+    return ['hotel']
+  }
+
   return (
     <div style={{
       height: 'calc(100vh - 64px)',
@@ -133,6 +140,7 @@ function SideNav({ collapsed, onCollapse }) {
       <Menu
         mode="inline"
         selectedKeys={getSelectedKeys()}
+        defaultOpenKeys={getDefaultOpenKeys()}
         style={{ height: '100%', borderRight: 'none' }}
         items={isAdmin ? adminMenuItems : merchantMenuItems}
         onClick={handleMenuClick}

@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { Repository, DataSource} from 'typeorm';
 import { RoomTypeEntity } from './room-type.entity';
+import { HotelSubmissionService } from '../hotel-submission/hotel-submission.service';
 
 @Injectable()
 export class RoomTypeService {
   constructor(
     @InjectRepository(RoomTypeEntity)
     private roomTypeRepository: Repository<RoomTypeEntity>,
+    private readonly hotelSubmissionService: HotelSubmissionService,
+    @InjectDataSource()
+    private dataSource: DataSource,
   ) {}
 
   async create(roomTypeData: Partial<RoomTypeEntity>): Promise<RoomTypeEntity> {
@@ -50,4 +54,41 @@ export class RoomTypeService {
     await this.roomTypeRepository.update(id, { status: 'draft', updatedBy: userId });
     return this.findOne(id);
   }
+
+  // 审核房型提交
+    async audit(id: string, roomTypeData: { status: string; rejectReason?: string }, reviewedBy: string): Promise<RoomTypeEntity | undefined> {
+      const queryRunner = this.dataSource.createQueryRunner();
+      
+      try {
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        
+        // 第一步：在 hotel_submission 表中新增一条记录
+        await this.hotelSubmissionService.create({
+          roomtypeId: id, //记录关联的roomTypeID
+          ...roomTypeData,//记录审核状态、驳回原因
+          reviewedBy,  //记录审核人
+          createdBy: reviewedBy, //记录创建人
+          updatedBy: reviewedBy, //记录更新人
+        }, queryRunner.manager);
+        
+        // 第二步：更新 room_type 表中的 status 字段
+        await queryRunner.manager.getRepository(RoomTypeEntity)
+        .update(id, { 
+          status: roomTypeData.status, updatedBy: reviewedBy 
+        });
+                
+        const updatedRoomType = await this.findOne(id);
+        
+        await queryRunner.commitTransaction();
+        
+        return updatedRoomType;
+      } catch (error) {  //如果出现异常，回滚事务
+        await queryRunner.rollbackTransaction();
+        throw error;
+      } finally {
+        await queryRunner.release();
+      }
+    }
+
 }

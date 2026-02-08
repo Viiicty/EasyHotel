@@ -2,6 +2,8 @@ import { Column, Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../common/base.entity';
 import { HotelEntity } from '../hotel/hotel.entity';
 import { UserEntity } from '../user/user.entity';
+import { RoomTypeEntity } from '../room-type/room-type.entity';
+import { RoomPriceCalendarEntity } from '../room-price-calendar/room-price-calendar.entity';
 
 @Entity('hotel_submission')
 export class HotelSubmissionEntity extends BaseEntity {
@@ -11,6 +13,20 @@ export class HotelSubmissionEntity extends BaseEntity {
 
   @Column({ type: 'varchar', nullable: true, name: 'hotel_id', comment: 'hotel_id' })
   hotelId?: string;
+
+  @ManyToOne(() => RoomTypeEntity)
+  @JoinColumn({ name: 'roomtype_id' })
+  roomtype?: RoomTypeEntity;
+  
+  @Column({ type: 'varchar', nullable: true, name: 'roomtype_id', comment: '房型ID' })
+  roomtypeId?: string;
+
+  @ManyToOne(() => RoomPriceCalendarEntity)
+  @JoinColumn({ name: 'roompricecalendar_id' })
+  roompricecalendar?: RoomPriceCalendarEntity;
+  
+  @Column({ type: 'varchar', nullable: true, name: 'roompricecalendar_id', comment: '房价房态ID' })
+  roompricecalendarId?: string;
 
   @ManyToOne(() => UserEntity)
   @JoinColumn({ name: 'merchant_id' })

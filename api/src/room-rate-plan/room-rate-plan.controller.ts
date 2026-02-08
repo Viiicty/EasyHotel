@@ -8,7 +8,6 @@ export class RoomRatePlanController {
   constructor(private readonly roomRatePlanService: RoomRatePlanService) {}
 
   @Post()
-  @UseGuards(AuthGuard())
   async create(@Body() ratePlanData: Partial<RoomRatePlanEntity>, @Request() req): Promise<RoomRatePlanEntity> {
     return this.roomRatePlanService.create({
       ...ratePlanData,
@@ -27,7 +26,6 @@ export class RoomRatePlanController {
   }
 
   @Put(':id')
-  @UseGuards(AuthGuard())
   async update(@Param('id') id: string, @Body() ratePlanData: Partial<RoomRatePlanEntity>, @Request() req): Promise<RoomRatePlanEntity> {
     return this.roomRatePlanService.update(id, {
       ...ratePlanData,
@@ -36,7 +34,6 @@ export class RoomRatePlanController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard())
   async remove(@Param('id') id: string): Promise<void> {
     return this.roomRatePlanService.remove(id);
   }

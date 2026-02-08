@@ -8,7 +8,6 @@ export class HotelSubmissionController {
   constructor(private readonly hotelSubmissionService: HotelSubmissionService) {}
 
   @Post()
-  @UseGuards(AuthGuard())
   async create(@Body() submissionData: Partial<HotelSubmissionEntity>, @Request() req): Promise<HotelSubmissionEntity> {
     return this.hotelSubmissionService.create({
       ...submissionData,
@@ -28,7 +27,6 @@ export class HotelSubmissionController {
   }
 
   @Put(':id')
-  @UseGuards(AuthGuard())
   async update(@Param('id') id: string, @Body() submissionData: Partial<HotelSubmissionEntity>, @Request() req): Promise<HotelSubmissionEntity> {
     return this.hotelSubmissionService.update(id, {
       ...submissionData,
@@ -37,14 +35,23 @@ export class HotelSubmissionController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard())
   async remove(@Param('id') id: string): Promise<void> {
     return this.hotelSubmissionService.remove(id);
   }
 
   @Get('hotel/:hotelId')
-  async findByHotelId(@Param('hotelId') hotelId: string): Promise<HotelSubmissionEntity[]> {
+  async findByHotelId(@Param('hotelId') hotelId: string): Promise<HotelSubmissionEntity> {
     return this.hotelSubmissionService.findByHotelId(hotelId);
+  }
+
+  @Get('roomtype/:roomtypeId')
+  async findByRoomTypeId(@Param('roomtypeId') roomtypeId: string): Promise<HotelSubmissionEntity> {
+    return this.hotelSubmissionService.findByRoomTypeId(roomtypeId);
+  }
+
+  @Get('roompricecalendar/:roompricecalendarId')
+  async findByRoomPriceCalendarId(@Param('roompricecalendarId') roompricecalendarId: string): Promise<HotelSubmissionEntity> {
+    return this.hotelSubmissionService.findByRoomPriceCalendarId(roompricecalendarId);
   }
 
   @Get('merchant/:merchantId')
@@ -58,13 +65,11 @@ export class HotelSubmissionController {
   }
 
   @Put(':id/approve')
-  @UseGuards(AuthGuard())
   async approve(@Param('id') id: string, @Request() req): Promise<HotelSubmissionEntity> {
     return this.hotelSubmissionService.approve(id, req.user.id);
   }
 
   @Put(':id/reject')
-  @UseGuards(AuthGuard())
   async reject(@Param('id') id: string, @Body('rejectReason') rejectReason: string, @Request() req): Promise<HotelSubmissionEntity> {
     return this.hotelSubmissionService.reject(id, rejectReason, req.user.id);
   }

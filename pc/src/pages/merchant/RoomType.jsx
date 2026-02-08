@@ -9,6 +9,7 @@ import {
   SearchOutlined,
   SendOutlined
 } from '@ant-design/icons'
+
 function RoomType() {
   const [hotels, setHotels] = useState([])
   const [selectedHotel, setSelectedHotel] = useState(null)
@@ -21,6 +22,7 @@ function RoomType() {
   const [loading, setLoading] = useState(false)
   const [hotelsLoading, setHotelsLoading] = useState(true)
   const [apiError, setApiError] = useState(null)
+  const [roomTypesError, setRoomTypesError] = useState(null)
 
   const getToken = () => {
     return localStorage.getItem('token')
@@ -63,6 +65,7 @@ function RoomType() {
 
   const fetchRoomTypes = async (hotelId) => {
     setLoading(true)
+    setRoomTypesError(null)
     try {
       const token = getToken()
       const response = await fetch(`/api/room-type/hotel/${hotelId}`, {
@@ -72,15 +75,17 @@ function RoomType() {
       })
       
       if (response.ok) {
-        const result = await response.json()
+        const { data: result } = await response.json()
         setDataSource(result || [])
       } else {
         const errorData = await response.json().catch(() => ({}))
         console.error('API Error:', response.status, errorData)
+        setRoomTypesError(`获取房型列表失败 (${response.status})`)
         message.error(errorData.message || '获取房型列表失败')
       }
     } catch (error) {
       console.error('Failed to fetch room types:', error)
+      setRoomTypesError('网络错误，请检查后端服务是否启动')
       message.error('网络错误，请检查后端服务是否启动')
     } finally {
       setLoading(false)
@@ -95,7 +100,9 @@ function RoomType() {
     const hotel = hotels.find(hotel => hotel.id === hotelId)
     setSelectedHotel(hotel)
     message.success(`已选择酒店：${hotel?.nameZh}`)
-    fetchRoomTypes(hotelId)
+    if (hotel) {
+      fetchRoomTypes(hotel.id)
+    }
   }
 
   const getStatusColor = (status) => {

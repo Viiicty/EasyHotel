@@ -57,4 +57,10 @@ export class RoomTypeController {
   async reject(@Param('id') id: string, @Request() req): Promise<RoomTypeEntity> {
     return this.roomTypeService.reject(id, req.user.id);
   }
+
+  @Put('audit/:id')
+    async audit(@Param('id') id: string, @Body() auditData: { status: string; rejectReason?: string }, @Request() req): Promise<RoomTypeEntity> {
+      return this.roomTypeService.audit(id, auditData,req.user.id);
+    }
+
 }

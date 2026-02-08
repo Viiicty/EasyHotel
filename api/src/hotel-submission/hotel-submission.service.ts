@@ -1,18 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, EntityManager } from 'typeorm';
 import { HotelSubmissionEntity } from './hotel-submission.entity';
 
 @Injectable()
 export class HotelSubmissionService {
+  
   constructor(
     @InjectRepository(HotelSubmissionEntity)
     private hotelSubmissionRepository: Repository<HotelSubmissionEntity>,
   ) {}
 
-  async create(submissionData: Partial<HotelSubmissionEntity>): Promise<HotelSubmissionEntity> {
-    const submission = this.hotelSubmissionRepository.create(submissionData);
-    return this.hotelSubmissionRepository.save(submission);
+  async create(submissionData: Partial<HotelSubmissionEntity>, manager?: EntityManager): Promise<HotelSubmissionEntity> {
+    const repository = manager ? manager.getRepository(HotelSubmissionEntity) : this.hotelSubmissionRepository;
+    const submission = repository.create(submissionData);
+    return repository.save(submission);
   }
 
   async findAll(): Promise<HotelSubmissionEntity[]> {
@@ -32,12 +34,20 @@ export class HotelSubmissionService {
     await this.hotelSubmissionRepository.delete(id);
   }
 
-  async findByHotelId(hotelId: string): Promise<HotelSubmissionEntity[]> {
-    return this.hotelSubmissionRepository.find({ where: { hotelId } });
+  async findByHotelId(hotelId: string): Promise<HotelSubmissionEntity> {
+    return this.hotelSubmissionRepository.findOneBy({ hotelId });
   }
 
   async findByMerchantId(merchantId: string): Promise<HotelSubmissionEntity[]> {
     return this.hotelSubmissionRepository.find({ where: { merchantId } });
+  }
+
+  async findByRoomTypeId(roomtypeId: string): Promise<HotelSubmissionEntity> {
+    return this.hotelSubmissionRepository.findOneBy({ roomtypeId });
+  }
+
+  async findByRoomPriceCalendarId(roompricecalendarId: string): Promise<HotelSubmissionEntity> {
+    return this.hotelSubmissionRepository.findOneBy({ roompricecalendarId });
   }
 
   async findByStatus(status: string): Promise<HotelSubmissionEntity[]> {

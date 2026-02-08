@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react'
-import { Card, Form, Input, Select, Button, Row, Col, Space, message, Divider, Radio, TimePicker } from 'antd'
+import { Card, Form, Input, Select, Button, Row, Col, Space, message, Divider, Radio, TimePicker, Upload } from 'antd'
 import {
   UploadOutlined,
   SaveOutlined,
-  StarOutlined
+  StarOutlined,
+  PlusOutlined
 } from '@ant-design/icons'
 
 const { TextArea } = Input
 
-const API_BASE = 'http://localhost:8888'
+const API_BASE = '/api'
 
 function HotelInfo() {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
+  const [coverImage, setCoverImage] = useState(null)
+  const [coverImageLoading, setCoverImageLoading] = useState(false)
 
   const getToken = () => {
     return localStorage.getItem('token')
@@ -49,6 +52,30 @@ function HotelInfo() {
     localStorage.removeItem('hotel_draft')
     form.resetFields()
     message.success('已一键清除所有数据')
+  }
+
+  const handleCoverImageChange = (info) => {
+    if (info.file.status === 'done') {
+      setCoverImage(info.file.response?.data || info.file)
+      setCoverImageLoading(false)
+    } else if (info.file.status === 'uploading') {
+      setCoverImageLoading(true)
+    } else if (info.file.status === 'error') {
+      message.error('图片上传失败')
+      setCoverImageLoading(false)
+    }
+  }
+
+  const beforeUpload = (file) => {
+    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png'
+    if (!isJpgOrPng) {
+      message.error('只能上传 JPG/PNG 格式的图片!')
+    }
+    const isLt2M = file.size / 1024 / 1024 < 2
+    if (!isLt2M) {
+      message.error('图片大小不能超过 2MB!')
+    }
+    return isJpgOrPng && isLt2M
   }
 
   const saveDraftToBackend = async () => {
@@ -131,28 +158,21 @@ function HotelInfo() {
         cancelPolicy: values.cancel_policy,
         changePolicy: values.change_policy,
         extraBedPolicy: values.extra_bed_policy,
+        status: 'PENDING',
       }
 
-      const submissionData = {
-        hotelId: null,
-        payloadJson: JSON.stringify({
-          hotel: hotelData
-        }),
-        status: 'PENDING'
-      }
-
-      const response = await fetch(`${API_BASE}/hotel-submission`, {
+      const response = await fetch(`${API_BASE}/hotel`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(submissionData)
+        body: JSON.stringify(hotelData)
       })
 
       const result = await response.json()
 
-      if (response.ok && result.code === 200) {
+      if (response.ok) {
         message.success('提交审核成功')
         clearDraft()
         form.resetFields()
@@ -187,6 +207,31 @@ function HotelInfo() {
           }}
         >
           <Divider orientation="left">基础信息</Divider>
+
+          <Form.Item label="酒店精选封面" name="cover_image">
+            <Upload
+              name="cover_image"
+              listType="picture-card"
+              className="cover-uploader"
+              showUploadList={false}
+              action={`${API_BASE}/hotel/upload`}
+              headers={{
+                'Authorization': `Bearer ${getToken()}`
+              }}
+              beforeUpload={beforeUpload}
+              onChange={handleCoverImageChange}
+              style={coverUploaderStyle}
+            >
+              {coverImage ? (
+                <img src={URL.createObjectURL(coverImage)} alt="封面" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div>
+                  <PlusOutlined style={{ fontSize: 32 }} />
+                  <div style={{ marginTop: 8 }}>上传封面</div>
+                </div>
+              )}
+            </Upload>
+          </Form.Item>
 
           <Row gutter={[16, 16]}>
             <Col span={12}>
@@ -405,6 +450,18 @@ function HotelInfo() {
       </Card>
     </div>
   )
+}
+
+const coverUploaderStyle = {
+  width: '100%',
+  height: '200px',
+  border: '1px dashed #d9d9d9',
+  borderRadius: '8px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  overflow: 'hidden'
 }
 
 export default HotelInfo

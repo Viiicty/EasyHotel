@@ -8,7 +8,6 @@ export class RoomPriceCalendarController {
   constructor(private readonly roomPriceCalendarService: RoomPriceCalendarService) {}
 
   @Post()
-  @UseGuards(AuthGuard())
   async create(@Body() calendarData: Partial<RoomPriceCalendarEntity>, @Request() req): Promise<RoomPriceCalendarEntity> {
     return this.roomPriceCalendarService.create({
       ...calendarData,
@@ -27,7 +26,6 @@ export class RoomPriceCalendarController {
   }
 
   @Put(':id')
-  @UseGuards(AuthGuard())
   async update(@Param('id') id: string, @Body() calendarData: Partial<RoomPriceCalendarEntity>, @Request() req): Promise<RoomPriceCalendarEntity> {
     return this.roomPriceCalendarService.update(id, {
       ...calendarData,
@@ -36,7 +34,6 @@ export class RoomPriceCalendarController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard())
   async remove(@Param('id') id: string): Promise<void> {
     return this.roomPriceCalendarService.remove(id);
   }

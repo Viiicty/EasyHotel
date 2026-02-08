@@ -26,6 +26,8 @@ export class RoomTypeEntity extends BaseEntity {
   @Column({ type: 'int', nullable: true, comment: '最多可入住人数' })
   maxGuests?: number;
 
-  @Column({ type: 'enum', enum: ['draft', 'pending', 'approved'], default: 'draft', nullable: false, comment: '审核状态：draft-草稿，pending-待审核，approved-已通过' })
-  status?: 'draft' | 'pending' | 'approved';
+  @Column({ type: 'varchar',nullable: true, comment: '状态' })
+  status: string;
 }
+
+
