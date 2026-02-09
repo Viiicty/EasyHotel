@@ -1,5 +1,4 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { HomeBannerService } from './home-banner.service';
 import { HomeBannerEntity } from './home-banner.entity';
 
@@ -8,7 +7,6 @@ export class HomeBannerController {
   constructor(private readonly homeBannerService: HomeBannerService) {}
 
   @Post()
-  @UseGuards(AuthGuard())
   async create(@Body() bannerData: Partial<HomeBannerEntity>, @Request() req): Promise<HomeBannerEntity> {
     return this.homeBannerService.create({
       ...bannerData,
@@ -27,7 +25,6 @@ export class HomeBannerController {
   }
 
   @Put(':id')
- 
   async update(@Param('id') id: string, @Body() bannerData: Partial<HomeBannerEntity>, @Request() req): Promise<HomeBannerEntity> {
     return this.homeBannerService.update(id, {
       ...bannerData,
@@ -36,7 +33,6 @@ export class HomeBannerController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard())
   async remove(@Param('id') id: string): Promise<void> {
     return this.homeBannerService.remove(id);
   }

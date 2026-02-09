@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+
 import { HotelImageService } from './hotel-image.service';
 import { HotelImageEntity } from './hotel-image.entity';
 
@@ -8,7 +8,6 @@ export class HotelImageController {
   constructor(private readonly hotelImageService: HotelImageService) {}
 
   @Post()
-  @UseGuards(AuthGuard())
   async create(@Body() imageData: Partial<HotelImageEntity>, @Request() req): Promise<HotelImageEntity> {
     return this.hotelImageService.create({
       ...imageData,
@@ -27,7 +26,7 @@ export class HotelImageController {
   }
 
   @Put(':id')
-  @UseGuards(AuthGuard())
+ 
   async update(@Param('id') id: string, @Body() imageData: Partial<HotelImageEntity>, @Request() req): Promise<HotelImageEntity> {
     return this.hotelImageService.update(id, {
       ...imageData,
@@ -36,7 +35,7 @@ export class HotelImageController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard())
+
   async remove(@Param('id') id: string): Promise<void> {
     return this.hotelImageService.remove(id);
   }

@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request, Query } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+
 import { RoomPriceCalendarService } from './room-price-calendar.service';
 import { RoomPriceCalendarEntity } from './room-price-calendar.entity';
 

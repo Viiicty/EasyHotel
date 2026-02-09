@@ -1,0 +1,67 @@
+{
+  "hash": "dfeeceeb",
+  "configHash": "3f0b5452",
+  "lockfileHash": "b841843d",
+  "browserHash": "cfc1a798",
+  "optimized": {
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "5831166e",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "98df17c1",
+      "needsInterop": true
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.mjs",
+      "file": "react-router-dom.js",
+      "fileHash": "0211ae97",
+      "needsInterop": false
+    },
+    "antd": {
+      "src": "../../node_modules/antd/es/index.js",
+      "file": "antd.js",
+      "fileHash": "a22769b6",
+      "needsInterop": false
+    },
+    "antd/locale/zh_CN": {
+      "src": "../../node_modules/antd/locale/zh_CN.js",
+      "file": "antd_locale_zh_CN.js",
+      "fileHash": "029bde56",
+      "needsInterop": true
+    },
+    "@ant-design/icons": {
+      "src": "../../node_modules/@ant-design/icons/es/index.js",
+      "file": "@ant-design_icons.js",
+      "fileHash": "334be025",
+      "needsInterop": false
+    },
+    "dayjs": {
+      "src": "../../node_modules/dayjs/dayjs.min.js",
+      "file": "dayjs.js",
+      "fileHash": "758010b0",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "chunk-HCGKX5ED": {
+      "file": "chunk-HCGKX5ED.js"
+    },
+    "chunk-KVHUM5Y4": {
+      "file": "chunk-KVHUM5Y4.js"
+    },
+    "chunk-WNPTCGAH": {
+      "file": "chunk-WNPTCGAH.js"
+    },
+    "chunk-VWVCGJ7V": {
+      "file": "chunk-VWVCGJ7V.js"
+    },
+    "chunk-5WRI5ZAA": {
+      "file": "chunk-5WRI5ZAA.js"
+    }
+  }
+}

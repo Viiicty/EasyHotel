@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request, Query } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+
 import { HotelService } from './hotel.service';
 import { HotelEntity } from './hotel.entity';
 import { HotelSubmissionService } from '../hotel-submission/hotel-submission.service';

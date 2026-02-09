@@ -28,3 +28,7 @@ Authorization: Bearer {{token}}
 ###
 GET http://localhost:8888/upload/image/ff46e659-b789-416f-ae08-e5b0d706db88.png
 Authorization: Bearer {{token}}
+
+###
+GET http://localhost:8888/room-type?hotelId=a7c5a01e-747d-4607-9310-9636cd17bf0f
+Authorization: Bearer {{token}}

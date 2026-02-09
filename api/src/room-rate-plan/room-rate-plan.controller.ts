@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+
 import { RoomRatePlanService } from './room-rate-plan.service';
 import { RoomRatePlanEntity } from './room-rate-plan.entity';
 
