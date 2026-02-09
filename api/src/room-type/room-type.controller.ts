@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request, Query } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RoomTypeService } from './room-type.service';
 import { RoomTypeEntity } from './room-type.entity';
@@ -63,4 +63,14 @@ export class RoomTypeController {
       return this.roomTypeService.audit(id, auditData,req.user.id);
     }
 
+}
+
+@Controller('merchant/room-types')
+export class MerchantRoomTypeController {
+  constructor(private readonly roomTypeService: RoomTypeService) {}
+
+  @Get()
+  async getRoomTypes(@Query('hotelId') hotelId: string, @Request() req: any) {
+    return this.roomTypeService.getRoomTypesByMerchant(req.user.id, hotelId);
+  }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Table, Button, Space, DatePicker, InputNumber, Modal, Form, message, Row, Col, Tag, Input, Select } from 'antd'
+import { Card, Table, Button, Space, DatePicker, InputNumber, Modal, Form, message, Row, Col, Tag, Select, Empty } from 'antd'
 import {
   CalendarOutlined,
   EditOutlined,
@@ -7,79 +7,77 @@ import {
   CloseCircleOutlined,
   CheckCircleOutlined
 } from '@ant-design/icons'
+import dayjs from 'dayjs'
+import { merchantInventoryApi } from '../../api/merchantInventory'
 
 const { RangePicker } = DatePicker
 
 function RoomPrice() {
   console.log('RoomPrice component rendering')
   
-  const now = new Date()
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-
-  const [selectedDateRange, setSelectedDateRange] = useState([startOfMonth, endOfMonth])
+  const [loading, setLoading] = useState(false)
+  const [hotelLoading, setHotelLoading] = useState(false)
+  const [selectedDateRange, setSelectedDateRange] = useState([
+    dayjs().startOf('month'),
+    dayjs().endOf('month')
+  ])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCell, setEditingCell] = useState(null)
   const [form] = Form.useForm()
-
-  const roomTypes = [
-    {
-      key: '1',
-      name: '豪华大床房',
-      ratePlans: [
-        { id: '1-1', name: '含双早-可取消' },
-        { id: '1-2', name: '含双早-不可取消' },
-      ],
-    },
-    {
-      key: '2',
-      name: '标准双床房',
-      ratePlans: [
-        { id: '2-1', name: '含双早-可取消' },
-        { id: '2-2', name: '含双早-不可取消' },
-      ],
-    },
-    {
-      key: '3',
-      name: '行政套房',
-      ratePlans: [
-        { id: '3-1', name: '含双早-可取消' },
-        { id: '3-2', name: '含双早-不可取消' },
-      ],
-    },
-  ]
+  const [roomTypes, setRoomTypes] = useState([])
+  const [priceData, setPriceData] = useState([])
+  const [hotels, setHotels] = useState([])
+  const [selectedHotelId, setSelectedHotelId] = useState(null)
 
   const formatDate = (date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
+    return date.format('YYYY-MM-DD')
   }
 
   const formatDay = (date) => {
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${month}-${day}`
+    return date.format('MM-DD')
   }
 
   const formatWeekday = (date) => {
     const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-    return weekdays[date.getDay()]
+    return weekdays[date.day()]
+  }
+
+  const loadHotels = async () => {
+    setHotelLoading(true)
+    try {
+      const hotelsData = await merchantInventoryApi.getHotels()
+      setHotels(hotelsData)
+      
+      const savedHotelId = localStorage.getItem('selectedHotelId')
+      if (savedHotelId && hotelsData.some(h => h.hotelId === savedHotelId)) {
+        setSelectedHotelId(savedHotelId)
+      }
+    } catch (error) {
+      console.error('Failed to load hotels:', error)
+      message.error('加载酒店列表失败')
+    } finally {
+      setHotelLoading(false)
+    }
+  }
+
+  const handleHotelChange = (hotelId) => {
+    setSelectedHotelId(hotelId)
+    localStorage.setItem('selectedHotelId', hotelId)
   }
 
   const generateDates = () => {
     const dates = []
     const start = selectedDateRange[0]
     const end = selectedDateRange[1]
-    let current = new Date(start)
+    let current = start
 
-    while (current <= end) {
+    while (current.isBefore(end)) {
       dates.push({
         date: formatDate(current),
         day: formatDay(current),
         weekday: formatWeekday(current),
       })
-      current.setDate(current.getDate() + 1)
+      current = current.add(1, 'day')
     }
 
     return dates
@@ -87,21 +85,45 @@ function RoomPrice() {
 
   const dates = generateDates()
 
-  const generatePriceData = () => {
+  const buildGrid = (
+    roomTypes,
+    dates,
+    priceMap,
+    inventoryMap
+  ) => {
     const data = []
     roomTypes.forEach(room => {
       room.ratePlans.forEach(plan => {
         const row = {
-          key: plan.id,
-          roomType: room.name,
-          ratePlan: plan.name,
+          key: plan.ratePlanId,
+          roomTypeId: room.roomTypeId,
+          roomTypeName: room.roomTypeName,
+          ratePlanId: plan.ratePlanId,
+          ratePlanName: plan.planName,
+          basePrice: plan.basePrice,
+          currency: plan.currency,
         }
 
         dates.forEach(date => {
+          const priceKey = `${plan.ratePlanId}_${date.date}`
+          const inventoryKey = `${room.roomTypeId}_${date.date}`
+          
+          const dailyPrice = priceMap.get(priceKey)
+          const dailyInventory = inventoryMap.get(inventoryKey)
+
+          const price = dailyPrice?.price ?? plan.basePrice ?? 0
+          const totalQty = dailyInventory?.totalQty ?? 0
+          const remainQty = dailyInventory?.remainQty ?? 0
+          
+          const isClosed = totalQty === 0
+          const isSoldOut = totalQty > 0 && remainQty === 0
+
           row[date.date] = {
-            price: Math.floor(Math.random() * 500) + 300,
-            inventory: Math.floor(Math.random() * 10) + 1,
-            status: Math.random() > 0.2 ? 'open' : 'close',
+            price,
+            totalQty,
+            remainQty,
+            isClosed,
+            isSoldOut,
           }
         })
 
@@ -112,21 +134,79 @@ function RoomPrice() {
     return data
   }
 
-  const priceData = generatePriceData()
+  const loadData = async (hotelId) => {
+    if (!hotelId) {
+      setRoomTypes([])
+      setPriceData([])
+      return
+    }
+
+    setLoading(true)
+    try {
+      const [roomTypesData] = await Promise.all([
+        merchantInventoryApi.getRoomTypes(hotelId),
+      ])
+
+      setRoomTypes(roomTypesData)
+
+      if (roomTypesData.length === 0) {
+        setPriceData([])
+        return
+      }
+
+      const roomTypeIds = roomTypesData.map(rt => rt.roomTypeId)
+      const ratePlanIds = roomTypesData.flatMap(rt => rt.ratePlans.map(rp => rp.ratePlanId))
+
+      const [pricesData, inventoryData] = await Promise.all([
+        merchantInventoryApi.getDailyPrices(
+          ratePlanIds,
+          formatDate(selectedDateRange[0]),
+          formatDate(selectedDateRange[1])
+        ),
+        merchantInventoryApi.getDailyInventory(
+          roomTypeIds,
+          formatDate(selectedDateRange[0]),
+          formatDate(selectedDateRange[1])
+        ),
+      ])
+
+      const priceMap = new Map()
+      pricesData.forEach(item => {
+        priceMap.set(`${item.ratePlanId}_${item.date}`, item)
+      })
+
+      const inventoryMap = new Map()
+      inventoryData.forEach(item => {
+        inventoryMap.set(`${item.roomTypeId}_${item.date}`, item)
+      })
+
+      const gridData = buildGrid(roomTypesData, dates, priceMap, inventoryMap)
+      setPriceData(gridData)
+    } catch (error) {
+      console.error('Failed to load data:', error)
+      message.error('加载数据失败')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    console.log('RoomPrice component mounted')
+    loadHotels()
   }, [])
+
+  useEffect(() => {
+    loadData(selectedHotelId)
+  }, [selectedHotelId, selectedDateRange])
 
   const columns = [
     {
       title: '房型',
-      dataIndex: 'roomType',
+      dataIndex: 'roomTypeName',
       key: 'roomType',
       fixed: 'left',
       width: 150,
       render: (text, record, index) => {
-        const isFirst = index === 0 || priceData[index - 1]?.roomType !== text
+        const isFirst = index === 0 || priceData[index - 1]?.roomTypeName !== text
         return isFirst ? (
           <div style={{ fontWeight: 'bold', padding: '8px 0' }}>{text}</div>
         ) : null
@@ -134,7 +214,7 @@ function RoomPrice() {
     },
     {
       title: '售卖方案',
-      dataIndex: 'ratePlan',
+      dataIndex: 'ratePlanName',
       key: 'ratePlan',
       fixed: 'left',
       width: 180,
@@ -150,39 +230,52 @@ function RoomPrice() {
       key: date.date,
       width: 100,
       align: 'center',
-      render: (value) => (
-        <div
-          style={{
-            padding: '8px',
-            cursor: 'pointer',
-            background: value?.status === 'close' ? '#f5f5f5' : 'transparent',
-            opacity: value?.status === 'close' ? 0.5 : 1,
-          }}
-          onClick={() => handleCellClick(value, date.date)}
-        >
-          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1890ff' }}>
-            ¥{value?.price || 0}
-          </div>
-          <div style={{ fontSize: '12px', color: '#666' }}>
-            库存: {value?.inventory || 0}
-          </div>
-          <Tag
-            color={value?.status === 'open' ? 'green' : 'red'}
-            style={{ margin: '4px 0 0 0', fontSize: '10px' }}
+      render: (value, record) => {
+        if (!value) return null
+        
+        let statusTag = null
+        if (value.isClosed) {
+          statusTag = <Tag color="red" style={{ margin: '4px 0 0 0', fontSize: '10px' }}>关房</Tag>
+        } else if (value.isSoldOut) {
+          statusTag = <Tag color="orange" style={{ margin: '4px 0 0 0', fontSize: '10px' }}>售罄</Tag>
+        } else {
+          statusTag = <Tag color="green" style={{ margin: '4px 0 0 0', fontSize: '10px' }}>可售</Tag>
+        }
+
+        return (
+          <div
+            style={{
+              padding: '8px',
+              cursor: 'pointer',
+              background: value.isClosed ? '#f5f5f5' : 'transparent',
+              opacity: value.isClosed ? 0.5 : 1,
+            }}
+            onClick={() => handleCellClick(value, date.date, record)}
           >
-            {value?.status === 'open' ? '开房' : '关房'}
-          </Tag>
-        </div>
-      ),
+            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1890ff' }}>
+              ¥{value.price || 0}
+            </div>
+            <div style={{ fontSize: '12px', color: '#666' }}>
+              剩余: {value.remainQty || 0}
+            </div>
+            {statusTag}
+          </div>
+        )
+      },
     })),
   ]
 
-  const handleCellClick = (value, date) => {
-    setEditingCell({ value, date })
+  const handleCellClick = (value, date, record) => {
+    setEditingCell({ 
+      ...value, 
+      date,
+      ratePlanId: record.ratePlanId,
+      roomTypeId: record.roomTypeId,
+    })
     form.setFieldsValue({
       price: value?.price || 0,
-      inventory: value?.inventory || 0,
-      status: value?.status || 'open',
+      totalQty: value?.totalQty || 0,
+      status: value?.isClosed ? 'close' : 'open',
     })
     setIsModalOpen(true)
   }
@@ -190,10 +283,40 @@ function RoomPrice() {
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields()
+      
+      if (!editingCell?.ratePlanId || !editingCell?.roomTypeId) {
+        message.error('缺少必要信息')
+        return
+      }
+
+      setLoading(true)
+      
+      const updatePricePromise = merchantInventoryApi.updateDailyPrice(
+        editingCell.ratePlanId,
+        {
+          date: editingCell.date,
+          price: values.price,
+        }
+      )
+
+      const updateInventoryPromise = merchantInventoryApi.updateDailyInventory(
+        editingCell.roomTypeId,
+        {
+          date: editingCell.date,
+          totalQty: values.totalQty,
+        }
+      )
+
+      await Promise.all([updatePricePromise, updateInventoryPromise])
+      
       message.success('修改成功')
       setIsModalOpen(false)
+      await loadData()
     } catch (error) {
-      console.error('Validation failed:', error)
+      console.error('Failed to update:', error)
+      message.error('修改失败')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -207,9 +330,25 @@ function RoomPrice() {
         <Space direction="vertical" style={{ width: '100%' }} size="large">
           <Row gutter={[16, 16]} align="middle">
             <Col>
+              <Select
+                placeholder="请选择酒店"
+                style={{ width: 200 }}
+                value={selectedHotelId}
+                onChange={handleHotelChange}
+                loading={hotelLoading}
+                allowClear
+              >
+                {hotels.map(hotel => (
+                  <Select.Option key={hotel.hotelId} value={hotel.hotelId}>
+                    {hotel.nameZh}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Col>
+            <Col>
               <RangePicker
                 value={selectedDateRange}
-                onChange={setSelectedDateRange}
+                onChange={(dates) => setSelectedDateRange(dates)}
                 format="YYYY-MM-DD"
               />
             </Col>
@@ -231,14 +370,19 @@ function RoomPrice() {
             </Col>
           </Row>
 
-          <Table
-            dataSource={priceData}
-            columns={columns}
-            pagination={false}
-            scroll={{ x: 'max-content' }}
-            bordered
-            size="small"
-          />
+          {!selectedHotelId ? (
+            <Empty description="请选择酒店后查看房态房价" />
+          ) : (
+            <Table
+              dataSource={priceData}
+              columns={columns}
+              pagination={false}
+              scroll={{ x: 'max-content' }}
+              bordered
+              size="small"
+              loading={loading}
+            />
+          )}
         </Space>
       </Card>
 
@@ -248,18 +392,19 @@ function RoomPrice() {
         onOk={handleModalOk}
         onCancel={() => setIsModalOpen(false)}
         width={400}
+        confirmLoading={loading}
       >
         <Form
           form={form}
           layout="vertical"
           initialValues={{
             price: 0,
-            inventory: 0,
+            totalQty: 0,
             status: 'open',
           }}
         >
           <Form.Item label="日期">
-            <Input value={editingCell?.date} disabled />
+            <input value={editingCell?.date} disabled style={{ width: '100%', padding: '6px 11px', border: '1px solid #d9d9d9', borderRadius: '2px' }} />
           </Form.Item>
 
           <Form.Item
@@ -277,7 +422,7 @@ function RoomPrice() {
 
           <Form.Item
             label="库存"
-            name="inventory"
+            name="totalQty"
             rules={[{ required: true, message: '请输入库存' }]}
           >
             <InputNumber min={0} precision={0} style={{ width: '100%' }} />

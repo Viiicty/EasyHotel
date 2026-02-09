@@ -123,6 +123,7 @@ function HotelAudit() {
           cancelPolicy: item.cancelPolicy,
           changePolicy: item.changePolicy,
           extraBedPolicy: item.extraBedPolicy,
+          coverImage: item.coverImage,
         }))
         setDataSource(formattedData)
         
@@ -599,6 +600,7 @@ function HotelAudit() {
 
   const handleViewDetail = async (record) => {
     setSelectedRecord(record)
+    console.log("record：", record)
     fetchsubmission(record.id, activeTab)
     setIsDetailDrawerOpen(true)
   }
@@ -785,6 +787,20 @@ function HotelAudit() {
                 </Descriptions.Item>
                 <Descriptions.Item label="星级">
                   {selectedRecord.starLevel} 星级
+                </Descriptions.Item>
+                <Descriptions.Item label="酒店封面" span={2}>
+                  {selectedRecord.coverImage ? (
+                    <img 
+                      src={`${API_BASE}/upload/image/${selectedRecord.coverImage}`} 
+                      alt="酒店封面" 
+                      style={{ 
+                        width: 200, 
+                        height: 150, 
+                        objectFit: 'cover',
+                        borderRadius: '8px'
+                      }} 
+                    />
+                  ) : '-'}
                 </Descriptions.Item>
                 <Descriptions.Item label="提交时间">
                   {selectedRecord.createdAt}

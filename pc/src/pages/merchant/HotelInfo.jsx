@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Form, Input, Select, Button, Row, Col, Space, message, Divider, Radio, TimePicker, Upload } from 'antd'
+import { Card, Form, Input, Select, Button, Row, Col, Space, message, Divider, Radio, TimePicker, Upload, Spin } from 'antd'
 import {
   UploadOutlined,
   SaveOutlined,
@@ -15,6 +15,7 @@ function HotelInfo() {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [coverImage, setCoverImage] = useState(null)
+  const [coverImageUrl, setCoverImageUrl] = useState('')
   const [coverImageLoading, setCoverImageLoading] = useState(false)
 
   const getToken = () => {
@@ -55,8 +56,14 @@ function HotelInfo() {
   }
 
   const handleCoverImageChange = (info) => {
+    console.log("info.file",info.file)
     if (info.file.status === 'done') {
-      setCoverImage(info.file.response?.data || info.file)
+      const responseUrl = info.file.response?.data?.url  || info.file.response
+      if (responseUrl) {
+        setCoverImageUrl(responseUrl)
+        setCoverImage(responseUrl)
+        message.success('图片上传成功')
+      }
       setCoverImageLoading(false)
     } else if (info.file.status === 'uploading') {
       setCoverImageLoading(true)
@@ -103,6 +110,7 @@ function HotelInfo() {
         changePolicy: values.change_policy,
         extraBedPolicy: values.extra_bed_policy,
         status: 'DRAFT',
+        coverImage:values.file,
       }
 
       const response = await fetch(`${API_BASE}/hotel`, {
@@ -159,6 +167,7 @@ function HotelInfo() {
         changePolicy: values.change_policy,
         extraBedPolicy: values.extra_bed_policy,
         status: 'PENDING',
+        coverImage: coverImageUrl,
       }
 
       const response = await fetch(`${API_BASE}/hotel`, {
@@ -209,28 +218,64 @@ function HotelInfo() {
           <Divider orientation="left">基础信息</Divider>
 
           <Form.Item label="酒店精选封面" name="cover_image">
-            <Upload
-              name="cover_image"
-              listType="picture-card"
-              className="cover-uploader"
-              showUploadList={false}
-              action={`${API_BASE}/hotel/upload`}
-              headers={{
-                'Authorization': `Bearer ${getToken()}`
-              }}
-              beforeUpload={beforeUpload}
-              onChange={handleCoverImageChange}
-              style={coverUploaderStyle}
-            >
-              {coverImage ? (
-                <img src={URL.createObjectURL(coverImage)} alt="封面" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <div>
-                  <PlusOutlined style={{ fontSize: 32 }} />
-                  <div style={{ marginTop: 8 }}>上传封面</div>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Upload
+                name="file"
+                listType="picture-card"
+                className="cover-uploader"
+                showUploadList={false}
+                action={`${API_BASE}/upload/image`}
+                headers={{
+                  'Authorization': `Bearer ${getToken()}`
+                }}
+                beforeUpload={beforeUpload}
+                onChange={handleCoverImageChange}
+                style={coverUploaderStyle}
+              >
+                {coverImageLoading ? (
+                  <div>
+                    <Spin size="large" />
+                    <div style={{ marginTop: 8 }}>上传中...</div>
+                  </div>
+                ) : coverImageUrl ? (
+                  <img src={`${API_BASE}/upload/image/${coverImageUrl}`} alt="封面" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div>
+                    <PlusOutlined style={{ fontSize: 32 }} />
+                    <div style={{ marginTop: 8 }}>上传封面</div>
+                  </div>
+                )}
+              </Upload>
+              {coverImageUrl && (
+                <div style={{ marginTop: 12 }}>
+                  <Space>
+                    <span style={{ fontSize: 12, color: '#666' }}>图片预览：</span>
+                    <img 
+                      src={`${API_BASE}/upload/image/${coverImageUrl}`} 
+                      alt="封面预览" 
+                      style={{ 
+                        width: 100, 
+                        height: 100, 
+                        objectFit: 'cover', 
+                        border: '1px solid #d9d9d9',
+                        borderRadius: '4px'
+                      }} 
+                    />
+                    <Button 
+                      type="link" 
+                      size="small" 
+                      danger
+                      onClick={() => {
+                        setCoverImageUrl('')
+                        setCoverImage(null)
+                      }}
+                    >
+                      删除
+                    </Button>
+                  </Space>
                 </div>
               )}
-            </Upload>
+            </Space>
           </Form.Item>
 
           <Row gutter={[16, 16]}>

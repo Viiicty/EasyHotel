@@ -91,4 +91,51 @@ export class RoomTypeService {
       }
     }
 
+  async getRoomTypesByMerchant(userId: string, hotelId: string) {
+    const result = await this.dataSource.query(`
+      SELECT 
+        rt.id as "roomTypeId",
+        rt.room_type_name as "roomTypeName",
+        rt.status as "roomTypeStatus",
+        h.status as "hotelStatus",
+        rp.id as "ratePlanId",
+        rp.plan_name as "planName",
+        rp.base_price as "basePrice",
+        rp.currency as "currency",
+        rp.status as "ratePlanStatus"
+      FROM room_type rt
+      JOIN hotel h ON h.id = rt.hotel_id
+      LEFT JOIN room_rate_plan rp ON rp.room_type_id = rt.id
+      WHERE rt.hotel_id = $1
+        AND h.status = 'APPROVED'
+        AND rt.status = 'APPROVED'
+        AND h.merchant_id = $2
+      ORDER BY rt.id, rp.id
+    `, [hotelId, userId]);
+
+    const roomTypesMap = new Map();
+
+    for (const row of result) {
+      if (!roomTypesMap.has(row.roomTypeId)) {
+        roomTypesMap.set(row.roomTypeId, {
+          roomTypeId: row.roomTypeId,
+          roomTypeName: row.roomTypeName,
+          ratePlans: []
+        });
+      }
+
+      if (row.ratePlanId) {
+        const roomType = roomTypesMap.get(row.roomTypeId);
+        roomType.ratePlans.push({
+          ratePlanId: row.ratePlanId,
+          planName: row.planName,
+          basePrice: row.basePrice,
+          currency: row.currency
+        });
+      }
+    }
+
+    return Array.from(roomTypesMap.values());
+  }
+
 }

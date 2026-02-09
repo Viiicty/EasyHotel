@@ -1,35 +1,9 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request, Query, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request, Query } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { HotelService } from './hotel.service';
 import { HotelEntity } from './hotel.entity';
 import { HotelSubmissionService } from '../hotel-submission/hotel-submission.service';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { v4 as uuidv4 } from 'uuid';
-import * as express from 'express';
-import * as multer from 'multer';
 
-const storage = diskStorage({
-  destination: (req, file, cb) => {
-    const fileType = file.mimetype.split('/')[1];
-    const fileName = `${uuidv4()}.${fileType}`;
-    cb(null, `./api/banner/${fileName}`);
-  },
-  filename: (req, file, cb) => {
-    const fileType = file.mimetype.split('/')[1];
-    const fileName = `${uuidv4()}.${fileType}`;
-    cb(null, fileName);
-  }
-});
-
-const fileFilter = (req, file, cb) => {
-  const allowedMimes = ['image/jpeg', 'image/png', 'image/jpg'];
-  if (allowedMimes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed!'), false);
-  }
-};
 
 @Controller('hotel')
 export class HotelController {
@@ -85,23 +59,39 @@ export class HotelController {
   async audit(@Param('id') id: string, @Body() auditData: { status: string; rejectReason?: string }, @Request() req): Promise<HotelEntity> {
     return this.hotelService.audit(id, auditData,req.user.id);
   }
+}
 
-  @Post('upload')
-  @UseInterceptors(FileInterceptor('file', {
-    storage,
-    fileFilter,
-    limits: {
-      fileSize: 2 * 1024 * 1024, // 2MB
-    },
-  }))
-  async uploadFile(@Request() req: any) {
-    const file = req.file;
-    const fileUrl = `/banner/${file.filename}`;
-    return {
-      url: fileUrl,
-      filename: file.filename,
-      originalName: file.originalname,
-      size: file.size,
-    };
+@Controller('merchant/hotels')
+export class MerchantHotelController {
+  constructor(private readonly hotelService: HotelService) {}
+
+  @Get()
+  async getHotels(@Request() req: any) {
+    return this.hotelService.getApprovedHotelsByMerchant(req.user.id);
+  }
+}
+
+@Controller('admin/online-manage')
+export class AdminOnlineManageController {
+  constructor(private readonly hotelService: HotelService) {}
+
+  @Get('hotels')
+  async getHotels(@Query('status') status?: string, @Query('city') city?: string, @Query('keyword') keyword?: string) {
+    return this.hotelService.getOnlineManageList({ status, city, keyword });
+  }
+
+  @Get('hotels/:id')
+  async getHotelDetail(@Param('id') id: string) {
+    return this.hotelService.getHotelWithRoomTypes(id);
+  }
+
+  @Put('hotels/:id/online')
+  async setOnline(@Param('id') id: string) {
+    return this.hotelService.updateAvailableStatus(id, 'UP');
+  }
+
+  @Put('hotels/:id/offline')
+  async setOffline(@Param('id') id: string, @Body() body: { reason?: string }) {
+    return this.hotelService.updateAvailableStatus(id, 'DOWN');
   }
 }

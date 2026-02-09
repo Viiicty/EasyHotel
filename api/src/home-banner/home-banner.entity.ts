@@ -7,15 +7,13 @@ export class HomeBannerEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 255, nullable: true, comment: '可做分城市 Banner' })
   cityCode?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, comment: '' })
-  imageUrl?: string;
+  @Column({ type: 'varchar', length: 255, nullable: true, comment: '封面图片' })
+  coverImage?: string;
 
   @ManyToOne(() => HotelEntity)
   @JoinColumn({ name: 'hotel_id' })
   hotel?: HotelEntity;
 
-  @Column({ type: 'varchar', nullable: true, comment: 'hotel_id' })
-  hotelId?: string;
 
   @Column({ type: 'int', nullable: true, comment: '排序' })
   sortNo?: number;
@@ -26,6 +24,6 @@ export class HomeBannerEntity extends BaseEntity {
   @Column({ type: 'timestamp', nullable: true, comment: '投放结束时间' })
   endAt?: Date;
 
-  @Column({ type: 'varchar', length: 1, nullable: true, comment: '上/下线状态' })
+  @Column({ type: 'varchar',  nullable: true, comment: '上/下线状态' })
   status?: string;
 }

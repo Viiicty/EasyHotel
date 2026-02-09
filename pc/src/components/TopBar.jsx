@@ -55,7 +55,7 @@ function TopBar() {
           fontSize: '14px',
           color: '#666'
         }}>
-          测试酒店
+          易宿酒店管理平台
         </div>
       </div>
 

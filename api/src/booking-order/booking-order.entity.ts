@@ -53,6 +53,12 @@ export class BookingOrderEntity extends BaseEntity {
   @Column({ type: 'decimal', precision: 24, scale: 6, nullable: true, comment: '总价' })
   totalAmount?: number;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, comment: '成交单价快照' })
+  unitPrice?: number;
+
+  @Column({ type: 'jsonb', nullable: true, comment: '按天价格明细' })
+  priceDetail?: any;
+
   @Column({ type: 'varchar', length: 32, nullable: true, comment: '订单状态' })
   status?: string;
 }

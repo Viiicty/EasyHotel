@@ -9,6 +9,8 @@ import { RoomTypeModule } from './room-type/room-type.module';
 import { HotelSubmissionModule } from './hotel-submission/hotel-submission.module';
 import { RoomPriceCalendarModule } from './room-price-calendar/room-price-calendar.module';
 import { RoomRatePlanModule } from './room-rate-plan/room-rate-plan.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -20,8 +22,8 @@ import { RoomRatePlanModule } from './room-rate-plan/room-rate-plan.module';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
-      autoLoadEntities: true,// 自动加载实体
-      synchronize: true,// 自动同步数据库结构（这个字段控制实体代码生成到数据库）
+      autoLoadEntities: true,
+      synchronize: true,
     }),
     UserModule,
     HotelModule,
@@ -29,6 +31,8 @@ import { RoomRatePlanModule } from './room-rate-plan/room-rate-plan.module';
     HotelSubmissionModule,
     RoomPriceCalendarModule,
     RoomRatePlanModule,
+    InventoryModule,
+    UploadModule,
   ],
   providers: [
     {

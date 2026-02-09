@@ -3,15 +3,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PassportModule } from '@nestjs/passport';
 import { MulterModule } from '@nestjs/platform-express';
 import { HotelEntity } from './hotel.entity';
-import { HotelController } from './hotel.controller';
+import { HotelController, MerchantHotelController, AdminOnlineManageController } from './hotel.controller';
 import { HotelService } from './hotel.service';
-import { HotelSubmissionService } from '../hotel-submission/hotel-submission.service';
-import { HotelSubmissionEntity } from 'src/hotel-submission/hotel-submission.entity';
+import { HotelSubmissionModule } from '../hotel-submission/hotel-submission.module';
+import { HomeBannerModule } from '../home-banner/home-banner.module';
+import { HomeBannerController } from '../home-banner/home-banner.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([HotelEntity,HotelSubmissionEntity]), PassportModule, MulterModule],
-  controllers: [HotelController],
-  providers: [HotelService, HotelSubmissionService],
+  imports: [TypeOrmModule.forFeature([HotelEntity]), PassportModule, MulterModule, HotelSubmissionModule, HomeBannerModule],
+  controllers: [HotelController, MerchantHotelController, AdminOnlineManageController, HomeBannerController],
+  providers: [HotelService],
   exports: [HotelService],
 })
 export class HotelModule {}

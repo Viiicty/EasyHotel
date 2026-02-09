@@ -24,3 +24,7 @@ Content-Type: application/json
 ### 
 GET http://localhost:8888/auth/profile
 Authorization: Bearer {{token}}
+
+###
+GET http://localhost:8888/upload/image/ff46e659-b789-416f-ae08-e5b0d706db88.png
+Authorization: Bearer {{token}}

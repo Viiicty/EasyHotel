@@ -61,4 +61,10 @@ export class HotelEntity extends BaseEntity {
 
   @Column({ type: 'varchar', nullable: true, comment: '加床政策' })
   extraBedPolicy?: string;
+
+  @Column({ type: 'varchar', nullable: true, comment: '上架/下架' })
+  available?: string;
+
+  @Column({ type: 'varchar', nullable: true, comment: '酒店精选封面' })
+  coverImage?: string;
 }

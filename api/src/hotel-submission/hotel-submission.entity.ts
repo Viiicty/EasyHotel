@@ -38,7 +38,7 @@ export class HotelSubmissionEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'payloadJson', comment: '存酒店+房型+图片等"待审核快照"' })
   payloadJson?: string;
 
-  @Column({ type: 'varchar', length: 32, nullable: true, name: 'status', comment: '待审核/通过/拒绝' })
+  @Column({ type: 'varchar',  nullable: true, name: 'status', comment: '待审核/通过/拒绝' })
   status?: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'rejectReason', comment: '不通过原因' })

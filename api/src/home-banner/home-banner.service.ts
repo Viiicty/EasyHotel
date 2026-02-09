@@ -17,6 +17,7 @@ export class HomeBannerService {
 
   async findAll(): Promise<HomeBannerEntity[]> {
     return this.homeBannerRepository.find({
+      relations: ['hotel'],
       order: { sortNo: 'ASC' }
     });
   }
@@ -56,6 +57,11 @@ export class HomeBannerService {
   }
 
   async findByHotelId(hotelId: string): Promise<HomeBannerEntity[]> {
-    return this.homeBannerRepository.find({ where: { hotelId } });
+    return this.homeBannerRepository
+      .createQueryBuilder('banner')
+      .leftJoin('banner.hotel', 'hotel')
+      .where('hotel.id = :hotelId', { hotelId })
+      .orderBy('banner.sortNo', 'ASC')
+      .getMany();
   }
 }

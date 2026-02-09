@@ -27,7 +27,7 @@ export class HomeBannerController {
   }
 
   @Put(':id')
-  @UseGuards(AuthGuard())
+ 
   async update(@Param('id') id: string, @Body() bannerData: Partial<HomeBannerEntity>, @Request() req): Promise<HomeBannerEntity> {
     return this.homeBannerService.update(id, {
       ...bannerData,

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Card, Table, Button, Space, Tag, Modal, Form, Input, message, Descriptions, Drawer, Select } from 'antd'
+import { useState, useEffect } from 'react'
+import { Card, Table, Button, Space, Tag, Modal, Form, Input, message, Descriptions, Drawer, Select, Spin } from 'antd'
 import {
   CloudUploadOutlined,
   StopOutlined,
@@ -7,64 +7,57 @@ import {
   EyeOutlined,
   SearchOutlined
 } from '@ant-design/icons'
+import { adminOnlineManageApi } from '../../api/adminOnlineManage'
 
 function OnlineManage() {
-  const [dataSource, setDataSource] = useState([
-    {
-      key: '1',
-      hotelName: '杭州君悦酒店',
-      hotelNameEn: 'Grand Hyatt Hangzhou',
-      merchant: '张三',
-      city: '杭州',
-      starLevel: 5,
-      status: 'ONLINE',
-      onlineTime: '2024-01-10 10:00',
-      offlineTime: '-',
-    },
-    {
-      key: '2',
-      hotelName: '北京瑞吉酒店',
-      hotelNameEn: 'The St. Regis Beijing',
-      merchant: '李四',
-      city: '北京',
-      starLevel: 5,
-      status: 'ONLINE',
-      onlineTime: '2024-01-08 14:30',
-      offlineTime: '-',
-    },
-    {
-      key: '3',
-      hotelName: '上海浦东香格里拉',
-      hotelNameEn: 'Pudong Shangri-La Shanghai',
-      merchant: '王五',
-      city: '上海',
-      starLevel: 5,
-      status: 'OFFLINE',
-      onlineTime: '2024-01-05 09:15',
-      offlineTime: '2024-01-12 16:00',
-    },
-    {
-      key: '4',
-      hotelName: '广州白云宾馆',
-      hotelNameEn: 'Guangzhou Baiyun Hotel',
-      merchant: '赵六',
-      city: '广州',
-      starLevel: 4,
-      status: 'ONLINE',
-      onlineTime: '2024-01-03 11:20',
-      offlineTime: '-',
-    },
-  ])
-
+  const [dataSource, setDataSource] = useState([])
+  const [loading, setLoading] = useState(false)
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false)
   const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
+  const [detailData, setDetailData] = useState(null)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [offlineForm] = Form.useForm()
   const [filters, setFilters] = useState({
     status: '',
     city: '',
     keyword: '',
   })
+
+  useEffect(() => {
+    loadHotels()
+  }, [filters])
+
+  const loadHotels = async () => {
+    setLoading(true)
+    try {
+      const data = await adminOnlineManageApi.getHotels(filters)
+      const formattedData = data.map(item => ({
+        ...item,
+        key: item.id,
+        onlineTime: item.available === 'UP' ? formatDateTime(item.updatedAt) : '-',
+        offlineTime: item.available === 'DOWN' ? formatDateTime(item.updatedAt) : '-'
+      }))
+      setDataSource(formattedData)
+    } catch (error) {
+      console.error('Failed to load hotels:', error)
+      message.error('加载酒店列表失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-'
+    const date = new Date(dateString)
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).replace(/\//g, '-')
+  }
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -189,35 +182,34 @@ function OnlineManage() {
     },
   ]
 
-  const handleViewDetail = (record) => {
+  const handleViewDetail = async (record) => {
     setSelectedRecord(record)
+    setDetailLoading(true)
     setIsDetailDrawerOpen(true)
+    try {
+      const data = await adminOnlineManageApi.getHotelDetail(record.id)
+      setDetailData(data)
+    } catch (error) {
+      console.error('Failed to load hotel detail:', error)
+      message.error('加载酒店详情失败')
+    } finally {
+      setDetailLoading(false)
+    }
   }
 
-  const handleOnline = (record) => {
+  const handleOnline = async (record) => {
     Modal.confirm({
       title: '确认恢复上线',
       content: `确定要将"${record.hotelName}"恢复上线吗？`,
-      onOk: () => {
-        const newData = dataSource.map(item => {
-          if (item.key === record.key) {
-            return {
-              ...item,
-              status: 'ONLINE',
-              onlineTime: new Date().toLocaleString('zh-CN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-              }).replace(/\//g, '-'),
-              offlineTime: '-',
-            }
-          }
-          return item
-        })
-        setDataSource(newData)
-        message.success('恢复上线成功')
+      onOk: async () => {
+        try {
+          await adminOnlineManageApi.setOnline(record.id)
+          message.success('恢复上线成功')
+          loadHotels()
+        } catch (error) {
+          console.error('Online failed:', error)
+          message.error('恢复上线失败')
+        }
       },
     })
   }
@@ -230,27 +222,13 @@ function OnlineManage() {
 
   const handleOfflineSubmit = async (values) => {
     try {
-      const newData = dataSource.map(item => {
-        if (item.key === selectedRecord.key) {
-          return {
-            ...item,
-            status: 'OFFLINE',
-            offlineTime: new Date().toLocaleString('zh-CN', {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-            }).replace(/\//g, '-'),
-          }
-        }
-        return item
-      })
-      setDataSource(newData)
+      await adminOnlineManageApi.setOffline(selectedRecord.id, values.reason)
       message.success('下线成功')
       setIsOfflineModalOpen(false)
+      loadHotels()
     } catch (error) {
       console.error('Offline failed:', error)
+      message.error('下线失败')
     }
   }
 
@@ -297,6 +275,7 @@ function OnlineManage() {
           <Table
             dataSource={filteredDataSource}
             columns={columns}
+            loading={loading}
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
@@ -314,35 +293,134 @@ function OnlineManage() {
         open={isDetailDrawerOpen}
         onClose={() => setIsDetailDrawerOpen(false)}
       >
-        {selectedRecord && (
-          <Descriptions column={2} bordered>
-            <Descriptions.Item label="酒店名称（中文）" span={2}>
-              {selectedRecord.hotelName}
-            </Descriptions.Item>
-            <Descriptions.Item label="酒店名称（英文）" span={2}>
-              {selectedRecord.hotelNameEn}
-            </Descriptions.Item>
-            <Descriptions.Item label="城市">
-              {selectedRecord.city}
-            </Descriptions.Item>
-            <Descriptions.Item label="星级">
-              {selectedRecord.starLevel} 星级
-            </Descriptions.Item>
-            <Descriptions.Item label="商户">
-              {selectedRecord.merchant}
-            </Descriptions.Item>
-            <Descriptions.Item label="当前状态">
-              <Tag color={getStatusColor(selectedRecord.status)}>
-                {getStatusText(selectedRecord.status)}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="最近上线时间">
-              {selectedRecord.onlineTime}
-            </Descriptions.Item>
-            <Descriptions.Item label="最近下线时间">
-              {selectedRecord.offlineTime}
-            </Descriptions.Item>
-          </Descriptions>
+        {detailLoading ? (
+          <div style={{ textAlign: 'center', padding: '50px' }}>
+            <Spin size="large" />
+          </div>
+        ) : detailData ? (
+          <div>
+            <Descriptions title="酒店信息" column={2} bordered>
+              <Descriptions.Item label="酒店名称（中文）" span={2}>
+                {detailData.hotel.nameZh}
+              </Descriptions.Item>
+              <Descriptions.Item label="酒店名称（英文）" span={2}>
+                {detailData.hotel.nameEn}
+              </Descriptions.Item>
+              <Descriptions.Item label="城市">
+                {detailData.hotel.cityCode}
+              </Descriptions.Item>
+              <Descriptions.Item label="星级">
+                {detailData.hotel.starLevel} 星级
+              </Descriptions.Item>
+              <Descriptions.Item label="地址" span={2}>
+                {detailData.hotel.address}
+              </Descriptions.Item>
+              <Descriptions.Item label="审核状态">
+                <Tag color={detailData.hotel.status === 'APPROVED' ? 'success' : 'default'}>
+                  {detailData.hotel.status === 'APPROVED' ? '已审核' : '未审核'}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="上架状态">
+                <Tag color={detailData.hotel.available === 'UP' ? 'success' : 'default'}>
+                  {detailData.hotel.available === 'UP' ? '已上架' : (detailData.hotel.available === 'DOWN' ? '已下架' : '未知')}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="创建时间">
+                {formatDateTime(detailData.hotel.createdAt)}
+              </Descriptions.Item>
+              <Descriptions.Item label="更新时间">
+                {formatDateTime(detailData.hotel.updatedAt)}
+              </Descriptions.Item>
+              {detailData.hotel.facilities && (
+                <Descriptions.Item label="酒店设施" span={2}>
+                  {detailData.hotel.facilities.join(', ')}
+                </Descriptions.Item>
+              )}
+              {detailData.hotel.tags && (
+                <Descriptions.Item label="快捷标签" span={2}>
+                  {detailData.hotel.tags.map((tag, index) => (
+                    <Tag key={index}>{tag}</Tag>
+                  ))}
+                </Descriptions.Item>
+              )}
+              {detailData.hotel.checkInTime && (
+                <Descriptions.Item label="入住时间">
+                  {formatDateTime(detailData.hotel.checkInTime)}
+                </Descriptions.Item>
+              )}
+              {detailData.hotel.checkOutTime && (
+                <Descriptions.Item label="离店时间">
+                  {formatDateTime(detailData.hotel.checkOutTime)}
+                </Descriptions.Item>
+              )}
+              {detailData.hotel.cancelPolicy && (
+                <Descriptions.Item label="取消政策" span={2}>
+                  {detailData.hotel.cancelPolicy}
+                </Descriptions.Item>
+              )}
+              {detailData.hotel.changePolicy && (
+                <Descriptions.Item label="修改政策" span={2}>
+                  {detailData.hotel.changePolicy}
+                </Descriptions.Item>
+              )}
+              {detailData.hotel.extraBedPolicy && (
+                <Descriptions.Item label="加床政策" span={2}>
+                  {detailData.hotel.extraBedPolicy}
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+
+            {detailData.roomTypes && detailData.roomTypes.length > 0 && (
+              <div style={{ marginTop: '24px' }}>
+                <h3>房型信息（共 {detailData.roomTypes.length} 个房型）</h3>
+                <Table
+                  dataSource={detailData.roomTypes.map((rt, index) => ({
+                    ...rt,
+                    key: index
+                  }))}
+                  columns={[
+                    {
+                      title: '房型名称（中文）',
+                      dataIndex: 'name_zh',
+                      key: 'name_zh',
+                    },
+                    {
+                      title: '房型名称（英文）',
+                      dataIndex: 'name_en',
+                      key: 'name_en',
+                    },
+                    {
+                      title: '状态',
+                      dataIndex: 'status',
+                      key: 'status',
+                      render: (status) => (
+                        <Tag color={status === 'APPROVED' ? 'success' : 'default'}>
+                          {status === 'APPROVED' ? '已审核' : '未审核'}
+                        </Tag>
+                      ),
+                    },
+                    {
+                        title: '创建时间',
+                        dataIndex: 'created_time',
+                        key: 'created_time',
+                        render: (date) => formatDateTime(date),
+                      },
+                      {
+                        title: '更新时间',
+                        dataIndex: 'updated_time',
+                        key: 'updated_time',
+                        render: (date) => formatDateTime(date),
+                      },
+                  ]}
+                  pagination={false}
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '50px' }}>
+            暂无数据
+          </div>
         )}
       </Drawer>
 

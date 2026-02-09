@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request, Query } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RoomPriceCalendarService } from './room-price-calendar.service';
 import { RoomPriceCalendarEntity } from './room-price-calendar.entity';
@@ -39,20 +39,49 @@ export class RoomPriceCalendarController {
   }
 
   @Get('rate-plan/:ratePlanId')
-  async findByRatePlanId(@Param('ratePlanId') ratePlanId: string): Promise<RoomPriceCalendarEntity[]> {
-    return this.roomPriceCalendarService.findByRatePlanId(ratePlanId);
+  async findByRatePlanId(@Param('ratePlanId') ratePlanId: string, @Request() req): Promise<RoomPriceCalendarEntity[]> {
+    return this.roomPriceCalendarService.findByRatePlanId(req.user.id, ratePlanId);
   }
 
   @Get('rate-plan/:ratePlanId/range')
   async findByRatePlanIdAndDateRange(
     @Param('ratePlanId') ratePlanId: string,
     @Param('startDate') startDate: string,
-    @Param('endDate') endDate: string
+    @Param('endDate') endDate: string,
+    @Request() req
   ): Promise<RoomPriceCalendarEntity[]> {
     return this.roomPriceCalendarService.findByRatePlanIdAndDateRange(
+      req.user.id,
       ratePlanId,
       new Date(startDate),
       new Date(endDate)
     );
+  }
+}
+
+@Controller('merchant/rate-plans')
+export class MerchantRatePlanController {
+  constructor(private readonly roomPriceCalendarService: RoomPriceCalendarService) {}
+
+  @Get('daily')
+  async getDailyPrices(
+    @Query('ratePlanIds') ratePlanIds: string,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Request() req: any,
+  ) {
+    const ratePlanIdArray = ratePlanIds.split(',');
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    return this.roomPriceCalendarService.getDailyPrices(req.user.id, ratePlanIdArray, fromDate, toDate);
+  }
+
+  @Put(':ratePlanId/daily')
+  async updateDailyPrice(
+    @Param('ratePlanId') ratePlanId: string,
+    @Body() body: { date: string; price: number },
+    @Request() req: any,
+  ) {
+    return this.roomPriceCalendarService.updateDailyPrice(req.user.id, ratePlanId, new Date(body.date), body.price);
   }
 }
