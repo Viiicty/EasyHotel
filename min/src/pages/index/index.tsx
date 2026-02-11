@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { View, Text, Swiper, SwiperItem, Picker, Input } from '@tarojs/components'
+import { View, Text, Swiper, SwiperItem, Picker, Input, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { hotelService, Banner, Hotel } from '../../services/hotel.service'
 import './index.scss'
@@ -130,6 +130,31 @@ export default class Index extends Component<{}, IndexState> {
     })
   }
 
+  renderStars = (starLevel: number) => {
+    const stars = []
+    for (let i = 0; i < starLevel; i++) {
+      stars.push(<Text key={i} className='star'>⭐</Text>)
+    }
+    return stars
+  }
+
+  getTagLabel = (tag: string) => {
+    const labelMap: { [key: string]: string } = {
+      'wifi': 'WiFi',
+      'parking': '停车场',
+      'swimming': '泳池',
+      'gym': '健身房',
+      'restaurant': '餐厅',
+      'spa': 'SPA',
+      'family': '亲子',
+      'luxury': '豪华',
+      'business': '商务',
+      'airport': '近机场',
+      'subway': '近地铁'
+    }
+    return labelMap[tag] || tag
+  }
+
   handleCityChange = async (e) => {
     const cityCode = e.detail.value
     this.setState({
@@ -223,7 +248,7 @@ export default class Index extends Component<{}, IndexState> {
               {this.state.bannerList.map((banner) => (
                 <SwiperItem key={banner.id}>
                   <View className='banner-item' onClick={() => this.handleBannerClick(banner)}>
-                    <Text className='banner-text'>{banner.title || '酒店推荐'}</Text>
+                    {banner.coverImage && <Image className='banner-image' src={banner.coverImage} mode='aspectFill' />}
                   </View>
                 </SwiperItem>
               ))}
@@ -338,15 +363,21 @@ export default class Index extends Component<{}, IndexState> {
             {this.state.recommendHotels.length > 0 ? (
               this.state.recommendHotels.map((hotel) => (
                 <View key={hotel.id} className='hotel-card' onClick={() => this.handleHotelClick(hotel)}>
+                  {hotel.coverImage && <Image className='hotel-cover' src={hotel.coverImage} mode='aspectFill' />}
                   <View className='hotel-content'>
                     <Text className='hotel-name'>{hotel.hotelName}</Text>
                     <Text className='hotel-name-en'>{hotel.hotelNameEn}</Text>
-                    <View className='hotel-info'>
-                      <Text className='hotel-star'>{hotel.starLevel}星级</Text>
-                      <Text className='hotel-status'>{hotel.available === 'UP' ? '在线' : '离线'}</Text>
+                    <View className='hotel-stars'>
+                      {this.renderStars(hotel.starLevel)}
                     </View>
-                    <View className='hotel-location'>📍 {hotel.city}</View>
-                    <View className='hotel-address'>{hotel.address}</View>
+                    {hotel.tags && Array.isArray(hotel.tags) && hotel.tags.length > 0 && (
+                      <View className='hotel-tags'>
+                        {hotel.tags.map((tag, index) => (
+                          <Text key={index} className='hotel-tag'>{this.getTagLabel(tag)}</Text>
+                        ))}
+                      </View>
+                    )}
+                    <View className='hotel-address'>📍 {hotel.address}</View>
                   </View>
                 </View>
               ))

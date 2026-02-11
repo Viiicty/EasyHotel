@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { View, Text, Image, Button } from '@tarojs/components'
+import { View, Text, Image, Button, ScrollView } from '@tarojs/components'
 import Taro, { getCurrentInstance } from '@tarojs/taro'
 import { hotelService, HotelDetail, RoomType } from '../../services/hotel.service'
 import './index.scss'
@@ -69,6 +69,40 @@ export default class HotelDetailPage extends Component<{}, HotelDetailState> {
     return stars
   }
 
+  getFacilityIcon = (facility: string) => {
+    const iconMap: { [key: string]: string } = {
+      'wifi': '📶',
+      'parking': '🅿️',
+      'swimming': '🏊',
+      'gym': '🏋️',
+      'restaurant': '🍽️',
+      'spa': '💆',
+      'family': '👨‍👩‍👧‍👦',
+      'luxury': '👑',
+      'business': '💼',
+      'airport': '✈️',
+      'subway': '🚇'
+    }
+    return iconMap[facility] || '🏷️'
+  }
+
+  getFacilityLabel = (facility: string) => {
+    const labelMap: { [key: string]: string } = {
+      'wifi': 'WiFi',
+      'parking': '停车场',
+      'swimming': '泳池',
+      'gym': '健身房',
+      'restaurant': '餐厅',
+      'spa': 'SPA',
+      'family': '亲子',
+      'luxury': '豪华',
+      'business': '商务',
+      'airport': '近机场',
+      'subway': '近地铁'
+    }
+    return labelMap[facility] || facility
+  }
+
   render() {
     const { hotel, roomTypes, loading, error } = this.state
 
@@ -109,16 +143,24 @@ export default class HotelDetailPage extends Component<{}, HotelDetailState> {
             </View>
           </View>
 
-          {hotel.tags && typeof hotel.tags === 'string' && (
-            <View className='hotel-tags'>
-              {hotel.tags.split(',').map((tag, index) => (
-                <View key={index} className='tag-item'>
-                  <Text className='tag-icon'>🏷️</Text>
-                  <Text className='tag-text'>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          )}
+          <View className='facilities-scroll'>
+            <ScrollView scrollX className='scroll-container'>
+              <View className='facilities-list'>
+                {hotel.facilities && Array.isArray(hotel.facilities) && hotel.facilities.length > 0 && hotel.facilities.map((facility, index) => (
+                  <View key={`facility-${index}`} className='facility-item'>
+                    <Text className='facility-icon'>{this.getFacilityIcon(facility)}</Text>
+                    <Text className='facility-label'>{this.getFacilityLabel(facility)}</Text>
+                  </View>
+                ))}
+                {hotel.tags && Array.isArray(hotel.tags) && hotel.tags.length > 0 && hotel.tags.map((tag, index) => (
+                  <View key={`tag-${index}`} className='facility-item'>
+                    <Text className='facility-icon'>{this.getFacilityIcon(tag)}</Text>
+                    <Text className='facility-label'>{this.getFacilityLabel(tag)}</Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
 
           <View className='hotel-meta'>
             <View className='meta-item'>

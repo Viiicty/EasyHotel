@@ -30,6 +30,8 @@ export interface Hotel {
   roomTypeCount: number
   createdAt: string
   updatedAt: string
+  coverImage?: string
+  tags?: string[]
 }
 
 export interface HotelDetail {
@@ -41,8 +43,8 @@ export interface HotelDetail {
   starLevel: number
   status: string
   available: string
-  facilities: string
-  tags: string
+  facilities: string[]
+  tags: string[]
   checkInTime: string
   checkOutTime: string
   cancelPolicy: string
