@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+
 import { AmenityService } from './amenity.service';
 import { AmenityEntity } from './amenity.entity';
 
@@ -8,7 +8,7 @@ export class AmenityController {
   constructor(private readonly amenityService: AmenityService) {}
 
   @Post()
-  @UseGuards(AuthGuard())
+
   async create(@Body() amenityData: Partial<AmenityEntity>, @Request() req): Promise<AmenityEntity> {
     return this.amenityService.create({
       ...amenityData,

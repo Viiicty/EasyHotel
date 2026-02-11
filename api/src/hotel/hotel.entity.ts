@@ -2,6 +2,7 @@ import { Column, Entity, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../common/base.entity';
 import { UserEntity } from '../user/user.entity';
 
+
 @Entity('hotel')
 export class HotelEntity extends BaseEntity {
   @ManyToOne(() => UserEntity)

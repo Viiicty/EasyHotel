@@ -3,6 +3,7 @@
 /pc/node_modules
 /pc/dist
 /pc/.npm-cache
+/pc/.vite
 /min/node_modules
 /min/dist
 /min/.npm-cache

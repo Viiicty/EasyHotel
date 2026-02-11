@@ -78,11 +78,11 @@ function HotelInfo() {
     if (!isJpgOrPng) {
       message.error('只能上传 JPG/PNG 格式的图片!')
     }
-    const isLt2M = file.size / 1024 / 1024 < 2
-    if (!isLt2M) {
-      message.error('图片大小不能超过 2MB!')
+    const isLt8M = file.size / 1024 / 1024 < 8
+    if (!isLt8M) {
+      message.error('图片大小不能超过 8MB!')
     }
-    return isJpgOrPng && isLt2M
+    return isJpgOrPng && isLt8M
   }
 
   const saveDraftToBackend = async () => {
@@ -402,8 +402,8 @@ function HotelInfo() {
             </Col>
           </Row>
 
-          <Form.Item label="酒店设施">
-            <Select mode="tags" placeholder="请选择酒店设施" style={{ width: '100%' }} name="facilities">
+          <Form.Item label="酒店设施" name="facilities">
+            <Select mode="tags" placeholder="请选择酒店设施" style={{ width: '100%' }}>
               <Select.Option value="wifi">免费 WiFi</Select.Option>
               <Select.Option value="parking">免费停车场</Select.Option>
               <Select.Option value="swimming">游泳池</Select.Option>
@@ -413,8 +413,8 @@ function HotelInfo() {
             </Select>
           </Form.Item>
 
-          <Form.Item label="快捷标签">
-            <Select mode="tags" placeholder="请选择快捷标签" style={{ width: '100%' }} name="tags">
+          <Form.Item label="快捷标签" name="tags">
+            <Select mode="tags" placeholder="请选择快捷标签" style={{ width: '100%' }}>
               <Select.Option value="family">亲子酒店</Select.Option>
               <Select.Option value="luxury">豪华酒店</Select.Option>
               <Select.Option value="business">商务酒店</Select.Option>

@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+
 import { BookingOrderService } from './booking-order.service';
 import { BookingOrderEntity } from './booking-order.entity';
 
@@ -8,7 +8,7 @@ export class BookingOrderController {
   constructor(private readonly bookingOrderService: BookingOrderService) {}
 
   @Post()
-  @UseGuards(AuthGuard())
+
   async create(@Body() orderData: Partial<BookingOrderEntity>, @Request() req): Promise<BookingOrderEntity> {
     return this.bookingOrderService.create({
       ...orderData,
@@ -27,7 +27,7 @@ export class BookingOrderController {
   }
 
   @Put(':id')
-  @UseGuards(AuthGuard())
+
   async update(@Param('id') id: string, @Body() orderData: Partial<BookingOrderEntity>, @Request() req): Promise<BookingOrderEntity> {
     return this.bookingOrderService.update(id, {
       ...orderData,
@@ -36,7 +36,7 @@ export class BookingOrderController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard())
+
   async remove(@Param('id') id: string): Promise<void> {
     return this.bookingOrderService.remove(id);
   }

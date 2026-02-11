@@ -1,18 +1,48 @@
-import { Component } from 'react'
+import React, { Component } from 'react'
 import { View, Text, Image } from '@tarojs/components'
+import Taro, { getCurrentInstance } from '@tarojs/taro'
+import { Hotel } from '../../services/hotel.service'
 import './index.scss'
 
-export default class HotelList extends Component {
-  state = {
-    hotels: [
-      { id: 1, name: '豪华酒店', price: 299, rating: 4.8, image: '/assets/images/hotel1.jpg', address: '市中心' },
-      { id: 2, name: '商务酒店', price: 199, rating: 4.5, image: '/assets/images/hotel2.jpg', address: '商业区' },
-      { id: 3, name: '经济酒店', price: 99, rating: 4.2, image: '/assets/images/hotel3.jpg', address: '火车站' },
-      { id: 4, name: '精品酒店', price: 399, rating: 4.9, image: '/assets/images/hotel4.jpg', address: '风景区' }
-    ]
+interface HotelListState {
+  hotels: Hotel[]
+  loading: boolean
+}
+
+export default class HotelList extends Component<{}, HotelListState> {
+  state: HotelListState = {
+    hotels: [],
+    loading: false
+  }
+
+  componentDidShow() {
+    const instance = getCurrentInstance()
+    const { hotels, searchParams } = instance.router?.params || {}
+    
+    console.log('接收到的参数:', { hotels, searchParams })
+    
+    if (hotels) {
+      try {
+        const parsedHotels = JSON.parse(decodeURIComponent(hotels))
+        console.log('解析后的酒店数据:', parsedHotels)
+        this.setState({ hotels: parsedHotels })
+      } catch (error) {
+        console.error('解析酒店数据失败:', error)
+      }
+    }
+  }
+
+  componentDidHide() {}
+
+  handleHotelClick = (hotelId: string) => {
+    Taro.navigateTo({
+      url: `/pages/hotel/detail?id=${hotelId}`
+    })
   }
 
   render() {
+    const { hotels } = this.state
+
     return (
       <View className='hotel-list-page'>
         <View className='filter-bar'>
@@ -23,22 +53,25 @@ export default class HotelList extends Component {
         </View>
 
         <View className='hotel-container'>
-          {this.state.hotels.map((hotel) => (
-            <View key={hotel.id} className='hotel-card'>
-              <Image className='hotel-image' src={hotel.image} mode='aspectFill' />
-              <View className='hotel-content'>
-                <Text className='hotel-name'>{hotel.name}</Text>
-                <Text className='hotel-address'>📍 {hotel.address}</Text>
-                <View className='hotel-bottom'>
-                  <View className='hotel-rating'>⭐ {hotel.rating}</View>
-                  <View className='hotel-price'>
-                    <Text className='price'>¥{hotel.price}</Text>
-                    <Text className='price-unit'>/晚</Text>
+          {hotels.length > 0 ? (
+            hotels.map((hotel) => (
+              <View key={hotel.id} className='hotel-card' onClick={() => this.handleHotelClick(hotel.id)}>
+                <Image className='hotel-image' src='https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop' mode='aspectFill' />
+                <View className='hotel-content'>
+                  <Text className='hotel-name'>{hotel.hotelName}</Text>
+                  <Text className='hotel-address'>📍 {hotel.city}</Text>
+                  <View className='hotel-bottom'>
+                    <View className='hotel-rating'>{hotel.starLevel}星级</View>
+                    <View className='hotel-status'>{hotel.status === 'ONLINE' ? '在线' : '离线'}</View>
                   </View>
                 </View>
               </View>
+            ))
+          ) : (
+            <View className='empty-state'>
+              <Text className='empty-text'>暂无酒店数据</Text>
             </View>
-          ))}
+          )}
         </View>
       </View>
     )

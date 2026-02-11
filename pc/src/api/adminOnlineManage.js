@@ -8,7 +8,7 @@ export const adminOnlineManageApi = {
   getHotels: async (params = {}) => {
     const token = getToken()
     const queryParams = new URLSearchParams()
-    if (params.status) queryParams.append('status', params.status)
+    if (params.available) queryParams.append('available', params.available)
     if (params.city) queryParams.append('city', params.city)
     if (params.keyword) queryParams.append('keyword', params.keyword)
 
@@ -20,20 +20,8 @@ export const adminOnlineManageApi = {
     if (!response.ok) {
       throw new Error('Failed to fetch hotels')
     }
-    return response.json()
-  },
-
-  getHotelDetail: async (hotelId) => {
-    const token = getToken()
-    const response = await fetch(`${API_BASE}/admin/online-manage/hotels/${hotelId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    if (!response.ok) {
-      throw new Error('Failed to fetch hotel detail')
-    }
-    return response.json()
+    const result = await response.json()
+    return result.data
   },
 
   setOnline: async (hotelId) => {
@@ -47,7 +35,8 @@ export const adminOnlineManageApi = {
     if (!response.ok) {
       throw new Error('Failed to set hotel online')
     }
-    return response.json()
+    const result = await response.json()
+    return result.data
   },
 
   setOffline: async (hotelId, reason) => {
@@ -63,6 +52,7 @@ export const adminOnlineManageApi = {
     if (!response.ok) {
       throw new Error('Failed to set hotel offline')
     }
-    return response.json()
+    const result = await response.json()
+    return result.data
   }
 }

@@ -11,7 +11,7 @@ export default defineAppConfig({
     navigationBarBackgroundColor: '#1890ff',
     navigationBarTitleText: 'EasyHotel',
     navigationBarTextStyle: 'white'
-  // },
+  },
   // tabBar: {
   //   color: '#999999',
   //   selectedColor: '#1890ff',
@@ -43,5 +43,5 @@ export default defineAppConfig({
   //       selectedIconPath: 'assets/icons/user-active.png'
   //     }
   //   ]
-  }
+  // }
 })

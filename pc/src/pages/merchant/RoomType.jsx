@@ -39,7 +39,7 @@ function RoomType() {
     try {
       const token = getToken()
       console.log('token:', token)
-      const response = await fetch(`/api/hotel`, {
+      const response = await fetch(`/api/merchant/hotels`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -107,11 +107,11 @@ function RoomType() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'draft':
+      case 'DRAFT':
         return 'default'
-      case 'pending':
+      case 'PENDING':
         return 'processing'
-      case 'approved':
+      case 'APPROVED':
         return 'success'
       default:
         return 'default'
@@ -120,11 +120,11 @@ function RoomType() {
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'draft':
+      case 'DRAFT':
         return '草稿'
-      case 'pending':
+      case 'PENDING':
         return '待审核'
-      case 'approved':
+      case 'APPROVED':
         return '已通过'
       default:
         return status
@@ -188,7 +188,7 @@ function RoomType() {
           >
             编辑
           </Button>
-          {record.status === 'draft' && (
+          {record.status === 'DRAFT' && (
             <Button
               type="link"
               size="small"
@@ -233,7 +233,7 @@ function RoomType() {
       const roomTypeData = {
         ...values,
         hotelId: selectedHotel?.id,
-        status: 'draft',
+        status: 'DRAFT',
         breakfast: values.breakfast ? 'yes' : 'no',
       }
 

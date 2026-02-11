@@ -3,7 +3,7 @@ import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { HotelEntity } from './hotel.entity';
 import { HotelSubmissionService } from '../hotel-submission/hotel-submission.service';
-import { HomeBannerEntity } from 'src/home-banner/home-banner.entity';
+import { HomeBannerEntity } from '../home-banner/home-banner.entity';
 
 
 @Injectable()
@@ -11,14 +11,25 @@ export class HotelService {
   constructor(
     @InjectRepository(HotelEntity)
     private hotelRepository: Repository<HotelEntity>,
+    @InjectRepository(HomeBannerEntity)
+    private homeBannerRepository: Repository<HomeBannerEntity>,
     private readonly hotelSubmissionService: HotelSubmissionService,
     @InjectDataSource()
     private dataSource: DataSource,
   ) {}
 
   async create(hotelData: Partial<HotelEntity>): Promise<HotelEntity> {
+    console.log('Creating hotel with data:', JSON.stringify(hotelData, null, 2));
+    console.log('Tags field:', hotelData.tags);
+    console.log('Tags type:', typeof hotelData.tags);
+    console.log('Tags isArray:', Array.isArray(hotelData.tags));
+    
     const hotel = this.hotelRepository.create(hotelData);
-    return this.hotelRepository.save(hotel);
+    const savedHotel = await this.hotelRepository.save(hotel);
+    
+    console.log('Saved hotel:', JSON.stringify(savedHotel, null, 2));
+    
+    return savedHotel;
   }
 
   async findAll(): Promise<HotelEntity[]> {
@@ -99,13 +110,7 @@ export class HotelService {
     return this.hotelRepository
       .createQueryBuilder('hotel')
       .where('hotel.merchantId = :userId', { userId })
-      .andWhere('hotel.status = :status', { status: 'APPROVED' })
-      .select([
-        'hotel.id as "hotelId"',
-        'hotel.nameZh as "nameZh"',
-        'hotel.status as "status"'
-      ])
-      .getRawMany();
+      .getMany();
   }
 
   async updateAvailableStatus(id: string, available: string): Promise<HotelEntity | undefined> {
@@ -113,7 +118,7 @@ export class HotelService {
     return this.findOne(id);
   }
 
-  async getOnlineManageList(filters?: { status?: string; city?: string; keyword?: string; available?: string }) {
+  async getOnlineManageList(filters?: { available?: string; city?: string; keyword?: string }) {
     const query = this.hotelRepository
       .createQueryBuilder('hotel')
       .leftJoin('hotel.merchant', 'merchant')
@@ -148,19 +153,6 @@ export class HotelService {
 
     const hotels = await query.getMany();
 
-    const hotelIds = hotels.map(h => h.id);
-    const roomTypeCounts = await this.dataSource.query(`
-      SELECT hotel_id, COUNT(*) as room_type_count
-      FROM room_type
-      WHERE hotel_id = ANY($1) AND status = 'APPROVED'
-      GROUP BY hotel_id
-    `, [hotelIds]);
-
-    const roomTypeCountMap = new Map();
-    roomTypeCounts.forEach(row => {
-      roomTypeCountMap.set(row.hotel_id, parseInt(row.room_type_count));
-    });
-
     return hotels.map(hotel => ({
       id: hotel.id,
       hotelName: hotel.nameZh,
@@ -168,47 +160,242 @@ export class HotelService {
       merchant: hotel.merchant?.name || '',
       city: hotel.cityCode,
       starLevel: hotel.starLevel,
-      status: hotel.available === 'UP' ? 'ONLINE' : (hotel.available === 'DOWN' ? 'OFFLINE' : 'UNKNOWN'),
       available: hotel.available,
-      roomTypeCount: roomTypeCountMap.get(hotel.id) || 0,
       createdAt: hotel.createdTime,
       updatedAt: hotel.updatedTime
     }));
   }
 
-  async getHotelWithRoomTypes(id: string) {
-    const hotel = await this.hotelRepository.findOne({ where: { id } });
+/************************小程序*****************************/
+
+  async getMiniHotelsByCityCode(cityCode: string): Promise<any[]> {
+    const hotels = await this.hotelRepository
+      .createQueryBuilder('hotel')
+      .select([
+        'hotel.id',
+        'hotel.nameZh',
+        'hotel.nameEn',
+        'hotel.cityCode',
+        'hotel.starLevel',
+        'hotel.status',
+        'hotel.available',
+        'hotel.address',
+        'hotel.facilities',
+        'hotel.tags',
+        'hotel.checkInTime',
+        'hotel.checkOutTime',
+        'hotel.cancelPolicy',
+        'hotel.changePolicy',
+        'hotel.extraBedPolicy',
+        'hotel.createdTime',
+        'hotel.updatedTime'
+      ])
+      .where('hotel.cityCode = :cityCode', { cityCode })
+      .andWhere('hotel.status = :status', { status: 'APPROVED' })
+      .andWhere('hotel.available = :available', { available: 'UP' })
+      .getMany();
+
+    return hotels.map(hotel => ({
+      id: hotel.id,
+      hotelName: hotel.nameZh,
+      hotelNameEn: hotel.nameEn,
+      city: hotel.cityCode,
+      starLevel: hotel.starLevel,
+      status: hotel.status,
+      available: hotel.available,
+      address: hotel.address,
+      facilities: hotel.facilities,
+      tags: hotel.tags,
+      checkInTime: hotel.checkInTime,
+      checkOutTime: hotel.checkOutTime,
+      cancelPolicy: hotel.cancelPolicy,
+      changePolicy: hotel.changePolicy,
+      extraBedPolicy: hotel.extraBedPolicy,
+      createdAt: hotel.createdTime,
+      updatedAt: hotel.updatedTime
+    }));
+  }
+
+  async getMiniHotelDetail(id: string): Promise<any> {
+    const hotel = await this.hotelRepository
+      .createQueryBuilder('hotel')
+      .where('hotel.id = :id', { id })
+      .getOne();
+
     if (!hotel) {
-      throw new Error('Hotel not found');
+      return null;
     }
 
-    const roomTypes = await this.dataSource.query(`
-      SELECT id, name_zh, name_en, status, created_time, updated_time
-      FROM room_type
-      WHERE hotel_id = $1 AND status = 'APPROVED'
-    `, [id]);
+    const banner = await this.dataSource.query(
+      'SELECT * FROM home_banner WHERE hotel_id = $1 ORDER BY "sortNo" ASC LIMIT 1',
+      [id]
+    );
+
+    console.log('Hotel ID:', id);
+    console.log('Found banner:', banner);
+
+    let coverImage = null;
+    if (banner && banner.length > 0 && banner[0].coverImage) {
+      coverImage = `http://192.168.3.22:8888/upload/image/${banner[0].coverImage}`;
+    } else {
+      coverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
+    }
 
     return {
-      hotel: {
-        id: hotel.id,
-        nameZh: hotel.nameZh,
-        nameEn: hotel.nameEn,
-        address: hotel.address,
-        cityCode: hotel.cityCode,
-        starLevel: hotel.starLevel,
-        status: hotel.status,
-        available: hotel.available,
-        facilities: hotel.facilities,
-        tags: hotel.tags,
-        checkInTime: hotel.checkInTime,
-        checkOutTime: hotel.checkOutTime,
-        cancelPolicy: hotel.cancelPolicy,
-        changePolicy: hotel.changePolicy,
-        extraBedPolicy: hotel.extraBedPolicy,
-        createdAt: hotel.createdTime,
-        updatedAt: hotel.updatedTime
-      },
-      roomTypes
+      id: hotel.id,
+      hotelName: hotel.nameZh,
+      hotelNameEn: hotel.nameEn,
+      address: hotel.address,
+      city: hotel.cityCode,
+      starLevel: hotel.starLevel,
+      status: hotel.status,
+      available: hotel.available,
+      facilities: hotel.facilities,
+      tags: hotel.tags,
+      checkInTime: hotel.checkInTime,
+      checkOutTime: hotel.checkOutTime,
+      cancelPolicy: hotel.cancelPolicy,
+      changePolicy: hotel.changePolicy,
+      extraBedPolicy: hotel.extraBedPolicy,
+      createdAt: hotel.createdTime,
+      updatedAt: hotel.updatedTime,
+      coverImage: coverImage
     };
   }
+
+  async searchMiniHotels(params: {
+    cityCode?: string
+    nameZh?: string
+    nameEn?: string
+    starLevel?: number
+  }): Promise<any[]> {
+    const query = this.hotelRepository
+      .createQueryBuilder('hotel')
+      .select([
+        'hotel.id',
+        'hotel.nameZh',
+        'hotel.nameEn',
+        'hotel.cityCode',
+        'hotel.starLevel',
+        'hotel.status',
+        'hotel.available',
+        'hotel.address',
+        'hotel.facilities',
+        'hotel.tags',
+        'hotel.checkInTime',
+        'hotel.checkOutTime',
+        'hotel.cancelPolicy',
+        'hotel.changePolicy',
+        'hotel.extraBedPolicy',
+        'hotel.createdTime',
+        'hotel.updatedTime'
+      ])
+      .where('hotel.status = :status', { status: 'APPROVED' })
+      .andWhere('hotel.available = :available', { available: 'UP' });
+
+    if (params.cityCode) {
+      query.andWhere('hotel.cityCode = :cityCode', { cityCode: params.cityCode });
+    }
+
+    if (params.nameZh) {
+      query.andWhere('hotel.nameZh LIKE :nameZh', { nameZh: `%${params.nameZh}%` });
+    }
+
+    if (params.nameEn) {
+      query.andWhere('hotel.nameEn LIKE :nameEn', { nameEn: `%${params.nameEn}%` });
+    }
+
+    if (params.starLevel) {
+      query.andWhere('hotel.starLevel <= :starLevel', { starLevel: params.starLevel });
+    }
+
+    const hotels = await query.getMany();
+
+    return hotels.map(hotel => ({
+      id: hotel.id,
+      hotelName: hotel.nameZh,
+      hotelNameEn: hotel.nameEn,
+      city: hotel.cityCode,
+      starLevel: hotel.starLevel,
+      status: hotel.status,
+      available: hotel.available,
+      address: hotel.address,
+      facilities: hotel.facilities,
+      tags: hotel.tags,
+      checkInTime: hotel.checkInTime,
+      checkOutTime: hotel.checkOutTime,
+      cancelPolicy: hotel.cancelPolicy,
+      changePolicy: hotel.changePolicy,
+      extraBedPolicy: hotel.extraBedPolicy,
+      createdAt: hotel.createdTime,
+      updatedAt: hotel.updatedTime
+    }));
+  }
+
+  async getRandomRecommendHotels(limit: number = 4): Promise<any[]> {
+    const hotels = await this.hotelRepository
+      .createQueryBuilder('hotel')
+      .select([
+        'hotel.id',
+        'hotel.nameZh',
+        'hotel.nameEn',
+        'hotel.cityCode',
+        'hotel.starLevel',
+        'hotel.status',
+        'hotel.available',
+        'hotel.address',
+        'hotel.facilities',
+        'hotel.tags',
+        'hotel.checkInTime',
+        'hotel.checkOutTime',
+        'hotel.cancelPolicy',
+        'hotel.changePolicy',
+        'hotel.extraBedPolicy',
+        'hotel.createdTime',
+        'hotel.updatedTime'
+      ])
+      .where('hotel.status = :status', { status: 'APPROVED' })
+      .andWhere('hotel.available = :available', { available: 'UP' })
+      .orderBy('RANDOM()')
+      .limit(limit)
+      .getMany();
+
+    const hotelIds = hotels.map(hotel => hotel.id);
+    const banners = await this.dataSource.query(
+      'SELECT * FROM home_banner WHERE hotel_id = ANY($1) ORDER BY "sortNo" ASC',
+      [hotelIds]
+    );
+
+    console.log('Hotel IDs:', hotelIds);
+    console.log('Found banners:', banners);
+
+    const bannerMap = new Map();
+    banners.forEach(banner => {
+      bannerMap.set(banner.hotel_id, `http://192.168.3.22:8888/upload/image/${banner.coverImage}`);
+    });
+
+    const defaultCoverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
+
+    return hotels.map(hotel => ({
+      id: hotel.id,
+      hotelName: hotel.nameZh,
+      hotelNameEn: hotel.nameEn,
+      city: hotel.cityCode,
+      starLevel: hotel.starLevel,
+      status: hotel.status,
+      available: hotel.available,
+      address: hotel.address,
+      facilities: hotel.facilities,
+      tags: hotel.tags,
+      checkInTime: hotel.checkInTime,
+      checkOutTime: hotel.checkOutTime,
+      cancelPolicy: hotel.cancelPolicy,
+      changePolicy: hotel.changePolicy,
+      extraBedPolicy: hotel.extraBedPolicy,
+      createdAt: hotel.createdTime,
+      updatedAt: hotel.updatedTime,
+      coverImage: bannerMap.get(hotel.id) || defaultCoverImage
+    }));
+  }
+
 }

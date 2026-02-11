@@ -17,7 +17,6 @@ function Submission() {
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState({})
   const [hotels, setHotels] = useState({})
-
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [filters, setFilters] = useState({
@@ -27,6 +26,19 @@ function Submission() {
 
   const getToken = () => {
     return localStorage.getItem('token')
+  }
+
+  const getCurrentUserId = () => {
+    const user = localStorage.getItem('user')
+    if (user) {
+      try {
+        const parsed = JSON.parse(user)
+        return parsed.id
+      } catch (error) {
+        console.error('Error parsing user:', error)
+      }
+    }
+    return null
   }
 
   const fetchUserById = async (userId) => {
@@ -89,6 +101,7 @@ function Submission() {
     setLoading(true)
     try {
       const token = getToken()
+      const currentUserId = getCurrentUserId()
       const response = await fetch(`${API_BASE}/hotel`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -100,7 +113,9 @@ function Submission() {
       }
       
       const result = await response.json()
-      const formattedData = (result.data || []).map(item => ({
+      const formattedData = (result.data || [])
+        .filter(item => item.merchantId === currentUserId)
+        .map(item => ({
         key: item.id,
         id: item.id,
         hotelName: item.nameZh || '未知酒店',
@@ -109,7 +124,7 @@ function Submission() {
         submitTime: item.createdTime ? new Date(item.createdTime).toLocaleString('zh-CN') : '-',
         submitterId: item.createdBy,
         submitter: item.createdBy || '-',
-        status: item.status === 'DRAFT' ? '草稿' : item.status === 'PENDING' ? '审核中' : item.status === 'ACCEPT' ? '已通过' : item.status === 'REJECT' ? '已驳回' : item.status,
+        status: item.status === 'DRAFT' ? '草稿' : item.status === 'PENDING' ? '审核中' : item.status === 'APPROVED' ? '已通过' : item.status === 'REJECTED' ? '已驳回' : item.status,
         auditorId: item.updatedBy,
         auditor: item.updatedBy || '-',
         rejectReason: item.rejectReason || '-',
@@ -143,6 +158,7 @@ function Submission() {
       await fetchHotelsMap()
       
       const token = getToken()
+      const currentUserId = getCurrentUserId()
       const response = await fetch(`${API_BASE}/room-type`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -154,7 +170,9 @@ function Submission() {
       }
       
       const result = await response.json()
-      const formattedData = (result.data || []).map(item => ({
+      const formattedData = (result.data || [])
+        .filter(item => item.createdBy === currentUserId)
+        .map(item => ({
         key: item.id,
         id: item.id,
         hotelId: item.hotelId,
@@ -186,57 +204,11 @@ function Submission() {
     }
   }
 
-  const fetchRoomPrices = async () => {
-    setLoading(true)
-    try {
-      const token = getToken()
-      const response = await fetch(`${API_BASE}/room-price-calendar`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch room prices')
-      }
-      
-      const result = await response.json()
-      const formattedData = (result.data || []).map(item => ({
-        key: item.id,
-        id: item.id,
-        ratePlanId: item.ratePlanId || '-',
-        date: item.date ? new Date(item.date).toLocaleDateString('zh-CN') : '-',
-        price: item.price || '-',
-        inventory: item.inventory || '-',
-        type: '房价房态',
-        submitTime: item.createdTime ? new Date(item.createdTime).toLocaleString('zh-CN') : '-',
-        submitterId: item.createdBy,
-        submitter: item.createdBy || '-',
-        status: '审核中',
-        auditorId: item.updatedBy,
-        auditor: item.updatedBy || '-',
-        rejectReason: '-',
-      }))
-      
-      setDataSource(formattedData)
-      
-      const userIds = formattedData.flatMap(item => [item.submitterId, item.auditorId])
-      fetchUsers(userIds)
-    } catch (error) {
-      console.error('Error fetching room prices:', error)
-      message.error('获取房价记录失败')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const fetchData = () => {
     if (activeTab === 'hotel') {
       fetchHotels()
     } else if (activeTab === 'roomtype') {
       fetchRoomTypes()
-    } else if (activeTab === 'roomprice') {
-      fetchRoomPrices()
     }
   }
 
@@ -412,84 +384,9 @@ function Submission() {
     },
   ]
 
-  const roomPriceColumns = [
-    {
-      title: '价格方案ID',
-      dataIndex: 'ratePlanId',
-      key: 'ratePlanId',
-      width: 200,
-    },
-    {
-      title: '日期',
-      dataIndex: 'date',
-      key: 'date',
-      width: 120,
-    },
-    {
-      title: '价格',
-      dataIndex: 'price',
-      key: 'price',
-      width: 100,
-    },
-    {
-      title: '库存',
-      dataIndex: 'inventory',
-      key: 'inventory',
-      width: 100,
-    },
-    {
-      title: '提交时间',
-      dataIndex: 'submitTime',
-      key: 'submitTime',
-      width: 180,
-    },
-    {
-      title: '提交人',
-      dataIndex: 'submitter',
-      key: 'submitter',
-      width: 100,
-      render: (_, record) => users[record.submitterId] || record.submitter,
-    },
-    {
-      title: '审核状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 120,
-      render: (status) => (
-        <Tag icon={getStatusIcon(status)} color={getStatusColor(status)}>
-          {status}
-        </Tag>
-      ),
-    },
-    {
-      title: '审核人',
-      dataIndex: 'auditor',
-      key: 'auditor',
-      width: 100,
-      render: (_, record) => users[record.auditorId] || record.auditor,
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 100,
-      fixed: 'right',
-      render: (_, record) => (
-        <Button
-          type="link"
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => handleViewDetail(record)}
-        >
-          查看详情
-        </Button>
-      ),
-    },
-  ]
-
   const getColumns = () => {
     if (activeTab === 'hotel') return hotelColumns
     if (activeTab === 'roomtype') return roomTypeColumns
-    if (activeTab === 'roomprice') return roomPriceColumns
     return hotelColumns
   }
 
@@ -548,19 +445,6 @@ function Submission() {
               />
             </TabPane>
             <TabPane tab="房型管理" key="roomtype">
-              <Table
-                dataSource={filteredDataSource}
-                columns={getColumns()}
-                loading={loading}
-                pagination={{
-                  pageSize: 10,
-                  showSizeChanger: true,
-                  showTotal: (total) => `共 ${total} 条`,
-                }}
-                scroll={{ x: 1200 }}
-              />
-            </TabPane>
-            <TabPane tab="房价房态" key="roomprice">
               <Table
                 dataSource={filteredDataSource}
                 columns={getColumns()}
@@ -691,36 +575,6 @@ function Submission() {
             </Descriptions.Item>
             <Descriptions.Item label="驳回原因" span={2}>
               {selectedRecord.rejectReason}
-            </Descriptions.Item>
-          </Descriptions>
-        )}
-        {selectedRecord && activeTab === 'roomprice' && (
-          <Descriptions bordered column={2}>
-            <Descriptions.Item label="价格方案ID" span={2}>
-              {selectedRecord.ratePlanId}
-            </Descriptions.Item>
-            <Descriptions.Item label="日期">
-              {selectedRecord.date}
-            </Descriptions.Item>
-            <Descriptions.Item label="价格">
-              {selectedRecord.price}
-            </Descriptions.Item>
-            <Descriptions.Item label="库存">
-              {selectedRecord.inventory}
-            </Descriptions.Item>
-            <Descriptions.Item label="提交时间">
-              {selectedRecord.submitTime}
-            </Descriptions.Item>
-            <Descriptions.Item label="提交人">
-              {users[selectedRecord.submitterId] || selectedRecord.submitter}
-            </Descriptions.Item>
-            <Descriptions.Item label="审核状态">
-              <Tag icon={getStatusIcon(selectedRecord.status)} color={getStatusColor(selectedRecord.status)}>
-                {selectedRecord.status}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="审核人">
-              {users[selectedRecord.auditorId] || selectedRecord.auditor}
             </Descriptions.Item>
           </Descriptions>
         )}

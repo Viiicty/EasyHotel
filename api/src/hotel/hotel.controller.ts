@@ -3,6 +3,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request, Qu
 import { HotelService } from './hotel.service';
 import { HotelEntity } from './hotel.entity';
 import { HotelSubmissionService } from '../hotel-submission/hotel-submission.service';
+import { Public } from '../common/public.decorator';
 
 
 @Controller('hotel')
@@ -76,13 +77,8 @@ export class AdminOnlineManageController {
   constructor(private readonly hotelService: HotelService) {}
 
   @Get('hotels')
-  async getHotels(@Query('status') status?: string, @Query('city') city?: string, @Query('keyword') keyword?: string) {
-    return this.hotelService.getOnlineManageList({ status, city, keyword });
-  }
-
-  @Get('hotels/:id')
-  async getHotelDetail(@Param('id') id: string) {
-    return this.hotelService.getHotelWithRoomTypes(id);
+  async getHotels(@Query('available') available?: string, @Query('city') city?: string, @Query('keyword') keyword?: string) {
+    return this.hotelService.getOnlineManageList({ available, city, keyword });
   }
 
   @Put('hotels/:id/online')
@@ -93,5 +89,64 @@ export class AdminOnlineManageController {
   @Put('hotels/:id/offline')
   async setOffline(@Param('id') id: string, @Body() body: { reason?: string }) {
     return this.hotelService.updateAvailableStatus(id, 'DOWN');
+  }
+}
+
+/*********************小程序 *********************/
+
+@Controller('mini/hotel')
+export class MiniHotelController {
+  constructor(private readonly hotelService: HotelService) {}
+
+  @Public()
+  @Get('city/:cityCode')
+  async findByCityCode(@Param('cityCode') cityCode: string): Promise<HotelEntity[]> {
+    return this.hotelService.findByCityCode(cityCode);
+  }
+
+  @Public()
+  @Get('list')               //通过hotel表格cityCode查询所有UP的酒店列表
+  async getHotelsByCityCode(@Query('cityCode') cityCode: string): Promise<any[]> {
+    return this.hotelService.getMiniHotelsByCityCode(cityCode);
+  }
+
+  @Public()
+  @Get('search')
+  async searchHotels(
+    @Query('cityCode') cityCode?: string,
+    @Query('nameZh') nameZh?: string,
+    @Query('nameEn') nameEn?: string,
+    @Query('starLevel') starLevel?: string
+  ): Promise<any[]> {
+    return this.hotelService.searchMiniHotels({
+      cityCode,
+      nameZh,
+      nameEn,
+      starLevel: starLevel ? parseInt(starLevel) : undefined
+    });
+  }
+
+  @Public()
+  @Get('by-star-level')           //通过星级查询所有小于等于查询条件的酒店列表
+  async getHotelsByStarLevel(
+    @Query('starLevel') starLevel: string
+  ): Promise<any[]> {
+    return this.hotelService.searchMiniHotels({
+      starLevel: parseInt(starLevel)
+    });
+  }
+
+  @Public()
+  @Get('recommend')           //随机推荐酒店
+  async getRecommendHotels(
+    @Query('limit') limit?: string
+  ): Promise<any[]> {
+    return this.hotelService.getRandomRecommendHotels(limit ? parseInt(limit) : 4);
+  }
+
+  @Public()
+  @Get(':id')
+  async getHotelDetail(@Param('id') id: string): Promise<any> {
+    return this.hotelService.getMiniHotelDetail(id);
   }
 }

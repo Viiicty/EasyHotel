@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { HomeBannerService } from './home-banner.service';
 import { HomeBannerEntity } from './home-banner.entity';
+import { Public } from '../common/public.decorator';
 
 @Controller('home-banner')
 export class HomeBannerController {
@@ -14,11 +15,13 @@ export class HomeBannerController {
     });
   }
 
+  @Public()
   @Get()
   async findAll(): Promise<HomeBannerEntity[]> {
     return this.homeBannerService.findAll();
   }
 
+  @Public()
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<HomeBannerEntity> {
     return this.homeBannerService.findOne(id);
@@ -37,17 +40,21 @@ export class HomeBannerController {
     return this.homeBannerService.remove(id);
   }
 
-  @Get('city/:cityCode')
+  /********小程序*********/
+  @Public()
+  @Get('mini/active')
+  async findActiveBanners(): Promise<HomeBannerEntity[]> {
+    return this.homeBannerService.findActiveBanners();
+  }
+
+  @Public()
+  @Get('mini/city/:cityCode')
   async findByCityCode(@Param('cityCode') cityCode: string): Promise<HomeBannerEntity[]> {
     return this.homeBannerService.findByCityCode(cityCode);
   }
 
-  @Get('active')
-  async findActiveBanners(@Param('cityCode') cityCode?: string): Promise<HomeBannerEntity[]> {
-    return this.homeBannerService.findActiveBanners(cityCode);
-  }
-
-  @Get('hotel/:hotelId')
+  @Public()
+  @Get('mini/hotel/:hotelId')
   async findByHotelId(@Param('hotelId') hotelId: string): Promise<HomeBannerEntity[]> {
     return this.homeBannerService.findByHotelId(hotelId);
   }

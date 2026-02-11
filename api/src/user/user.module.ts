@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserEntity } from './user.entity';
 import { UserController } from './user.controller';
+import { AdminMerchantManageController } from './admin-merchant-manage.controller';
 import { UserService } from './user.service';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
@@ -21,7 +22,7 @@ import { JwtStrategy } from './jwt.strategy';
       }),
     }),
   ],
-  controllers: [UserController],
+  controllers: [UserController, AdminMerchantManageController],
   providers: [UserService, AuthService, JwtStrategy],
   exports: [PassportModule, JwtStrategy],
 }) 

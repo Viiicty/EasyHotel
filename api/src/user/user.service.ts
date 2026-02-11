@@ -11,7 +11,7 @@ export class UserService {
     private userRepository: Repository<UserEntity>,
   ) {}
 
-  async create(email: string, password: string, name: string): Promise<UserEntity> {
+  async create(email: string, password: string, name: string, role?: string): Promise<UserEntity> {
     const existingUser = await this.userRepository.findOne({ where: { email } });
     if (existingUser) {
       throw new ConflictException('Email already exists');
@@ -23,6 +23,8 @@ export class UserService {
       email,
       passwordHash: hashedPassword,
       name,
+      role: role || 'merchant',
+      status: 'YES',
     });
 
     return this.userRepository.save(user);
@@ -34,5 +36,27 @@ export class UserService {
 
   async findById(id: string): Promise<UserEntity | undefined> {
     return this.userRepository.findOne({ where: { id } });
+  }
+
+  async findAllMerchants(): Promise<UserEntity[]> {
+    return this.userRepository.find({ where: { role: 'merchant' } });
+  }
+
+  async deleteMerchant(id: string): Promise<void> {
+    await this.userRepository.delete(id);
+  }
+
+  async updateMerchantStatus(id: string, status: string): Promise<UserEntity | undefined> {
+    await this.userRepository.update(id, { status });
+    return this.findById(id);
+  }
+
+  async updateMerchant(id: string, data: Partial<UserEntity>): Promise<UserEntity | undefined> {
+    const updateData: Partial<UserEntity> = { ...data }
+    if (!updateData.passwordHash) {
+      delete updateData.passwordHash
+    }
+    await this.userRepository.update(id, updateData);
+    return this.findById(id);
   }
 }

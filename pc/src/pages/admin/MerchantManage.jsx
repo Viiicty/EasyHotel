@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, Table, Button, Space, Tag, Modal, Form, Input, Select, message, Descriptions, Drawer, Switch } from 'antd'
 import {
   PlusOutlined,
@@ -9,59 +9,11 @@ import {
   UnlockOutlined,
   SearchOutlined
 } from '@ant-design/icons'
+import { adminMerchantManageApi } from '../../api/adminMerchantManage'
 
 function MerchantManage() {
-  const [dataSource, setDataSource] = useState([
-    {
-      key: '1',
-      name: '张三',
-      email: 'zhangsan@example.com',
-      phone: '13800138000',
-      company: '杭州君悦酒店',
-      city: '杭州',
-      hotelCount: 3,
-      status: 'active',
-      registerTime: '2024-01-10',
-      lastLogin: '2024-01-15 14:30',
-    },
-    {
-      key: '2',
-      name: '李四',
-      email: 'lisi@example.com',
-      phone: '13800138001',
-      company: '北京瑞吉酒店',
-      city: '北京',
-      hotelCount: 2,
-      status: 'active',
-      registerTime: '2024-01-08',
-      lastLogin: '2024-01-14 10:20',
-    },
-    {
-      key: '3',
-      name: '王五',
-      email: 'wangwu@example.com',
-      phone: '13800138002',
-      company: '上海浦东香格里拉',
-      city: '上海',
-      hotelCount: 1,
-      status: 'inactive',
-      registerTime: '2024-01-05',
-      lastLogin: '2024-01-13 16:45',
-    },
-    {
-      key: '4',
-      name: '赵六',
-      email: 'zhaoliu@example.com',
-      phone: '13800138003',
-      company: '广州白云宾馆',
-      city: '广州',
-      hotelCount: 2,
-      status: 'active',
-      registerTime: '2024-01-03',
-      lastLogin: '2024-01-12 09:15',
-    },
-  ])
-
+  const [dataSource, setDataSource] = useState([])
+  const [loading, setLoading] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false)
   const [editingMerchant, setEditingMerchant] = useState(null)
@@ -73,18 +25,42 @@ function MerchantManage() {
     keyword: '',
   })
 
+  useEffect(() => {
+    loadMerchants()
+  }, [filters])
+
+  const loadMerchants = async () => {
+    setLoading(true)
+    try {
+      const data = await adminMerchantManageApi.getMerchants(filters)
+      const formattedData = data.map(item => ({
+        ...item,
+        key: item.id,
+        hotelCount: 0,
+        registerTime: item.createdTime ? new Date(item.createdTime).toISOString().split('T')[0] : '-',
+        lastLogin: '-',
+      }))
+      setDataSource(formattedData)
+    } catch (error) {
+      console.error('Failed to load merchants:', error)
+      message.error('加载商户列表失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const columns = [
     {
       title: '姓名',
       dataIndex: 'name',
       key: 'name',
-      width: 100,
+      width: 120,
     },
     {
       title: '邮箱',
       dataIndex: 'email',
       key: 'email',
-      width: 200,
+      width: 220,
     },
     {
       title: '手机号',
@@ -93,32 +69,13 @@ function MerchantManage() {
       width: 150,
     },
     {
-      title: '公司/酒店',
-      dataIndex: 'company',
-      key: 'company',
-      width: 180,
-    },
-    {
-      title: '城市',
-      dataIndex: 'city',
-      key: 'city',
-      width: 100,
-    },
-    {
-      title: '酒店数量',
-      dataIndex: 'hotelCount',
-      key: 'hotelCount',
-      width: 100,
-      render: (count) => <Tag color="blue">{count} 家</Tag>,
-    },
-    {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
       width: 100,
       render: (status) => (
-        <Tag color={status === 'active' ? 'green' : 'default'}>
-          {status === 'active' ? '正常' : '禁用'}
+        <Tag color={status === 'YES' ? 'green' : 'default'}>
+          {status === 'YES' ? '正常' : '禁用'}
         </Tag>
       ),
     },
@@ -129,15 +86,9 @@ function MerchantManage() {
       width: 120,
     },
     {
-      title: '最后登录',
-      dataIndex: 'lastLogin',
-      key: 'lastLogin',
-      width: 180,
-    },
-    {
       title: '操作',
       key: 'action',
-      width: 300,
+      width: 280,
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
@@ -160,10 +111,10 @@ function MerchantManage() {
           <Button
             type="link"
             size="small"
-            icon={record.status === 'active' ? <LockOutlined /> : <UnlockOutlined />}
+            icon={record.status === 'YES' ? <LockOutlined /> : <UnlockOutlined />}
             onClick={() => handleToggleStatus(record)}
           >
-            {record.status === 'active' ? '禁用' : '启用'}
+            {record.status === 'YES' ? '禁用' : '启用'}
           </Button>
           <Button
             type="link"
@@ -199,61 +150,67 @@ function MerchantManage() {
   const handleDelete = (record) => {
     Modal.confirm({
       title: '确认删除',
-      content: `确定要删除商户"${record.name}"吗？`,
-      onOk: () => {
-        const newData = dataSource.filter(item => item.key !== record.key)
-        setDataSource(newData)
-        message.success('删除成功')
+      content: `确定要删除商户"${record.name}"吗？删除后该商户的所有数据将被清除，无法恢复。`,
+      okText: '确认删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await adminMerchantManageApi.deleteMerchant(record.id)
+          message.success('删除成功')
+          loadMerchants()
+        } catch (error) {
+          console.error('Delete failed:', error)
+          message.error('删除失败')
+        }
       },
     })
   }
 
-  const handleToggleStatus = (record) => {
-    const newStatus = record.status === 'active' ? 'inactive' : 'active'
-    const newData = dataSource.map(item => {
-      if (item.key === record.key) {
-        return { ...item, status: newStatus }
-      }
-      return item
+  const handleToggleStatus = async (record) => {
+    const newStatus = record.status === 'YES' ? 'NO' : 'YES'
+    Modal.confirm({
+      title: newStatus === 'YES' ? '确认启用' : '确认禁用',
+      content: `确定要${newStatus === 'YES' ? '启用' : '禁用'}商户"${record.name}"吗？`,
+      onOk: async () => {
+        try {
+          await adminMerchantManageApi.updateMerchantStatus(record.id, newStatus)
+          message.success(`${newStatus === 'YES' ? '启用' : '禁用'}成功`)
+          loadMerchants()
+        } catch (error) {
+          console.error('Update status failed:', error)
+          message.error(`${newStatus === 'YES' ? '启用' : '禁用'}失败`)
+        }
+      },
     })
-    setDataSource(newData)
-    message.success(`${newStatus === 'active' ? '启用' : '禁用'}成功`)
   }
 
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields()
+      const submitData = {
+        ...values,
+        status: values.status ? 'YES' : 'NO'
+      }
       if (editingMerchant) {
-        const newData = dataSource.map(item => {
-          if (item.key === editingMerchant.key) {
-            return { ...item, ...values }
-          }
-          return item
-        })
-        setDataSource(newData)
+        await adminMerchantManageApi.updateMerchant(editingMerchant.id, submitData)
         message.success('修改成功')
+        loadMerchants()
       } else {
-        const newMerchant = {
-          ...values,
-          key: Date.now().toString(),
-          hotelCount: 0,
-          status: 'active',
-          registerTime: new Date().toISOString().split('T')[0],
-          lastLogin: '-',
-        }
-        setDataSource([...dataSource, newMerchant])
+        await adminMerchantManageApi.createMerchant(submitData)
         message.success('添加成功')
+        loadMerchants()
       }
       setIsModalOpen(false)
     } catch (error) {
-      console.error('Validation failed:', error)
+      console.error('Operation failed:', error)
+      message.error(editingMerchant ? '修改失败' : '添加失败')
     }
   }
 
   const filteredDataSource = dataSource.filter(item => {
     if (filters.status && item.status !== filters.status) return false
-    if (filters.city && item.city !== filters.city) return false
-    if (filters.keyword && !item.name.includes(filters.keyword) && !item.email.includes(filters.keyword) && !item.company.includes(filters.keyword)) return false
+    if (filters.keyword && !item.name.includes(filters.keyword) && !item.email.includes(filters.keyword)) return false
     return true
   })
 
@@ -271,7 +228,7 @@ function MerchantManage() {
         <Space direction="vertical" style={{ width: '100%' }} size="large">
           <Space wrap>
             <Input
-              placeholder="搜索姓名/邮箱/公司"
+              placeholder="搜索姓名/邮箱"
               style={{ width: 250 }}
               prefix={<SearchOutlined />}
               onChange={(e) => setFilters({ ...filters, keyword: e.target.value })}
@@ -282,31 +239,21 @@ function MerchantManage() {
               allowClear
               onChange={(value) => setFilters({ ...filters, status: value })}
             >
-              <Select.Option value="active">正常</Select.Option>
-              <Select.Option value="inactive">禁用</Select.Option>
-            </Select>
-            <Select
-              placeholder="城市"
-              style={{ width: 150 }}
-              allowClear
-              onChange={(value) => setFilters({ ...filters, city: value })}
-            >
-              <Select.Option value="北京">北京</Select.Option>
-              <Select.Option value="上海">上海</Select.Option>
-              <Select.Option value="杭州">杭州</Select.Option>
-              <Select.Option value="广州">广州</Select.Option>
+              <Select.Option value="YES">正常</Select.Option>
+              <Select.Option value="NO">禁用</Select.Option>
             </Select>
           </Space>
 
           <Table
             dataSource={filteredDataSource}
             columns={columns}
+            loading={loading}
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条`,
             }}
-            scroll={{ x: 1600 }}
+            scroll={{ x: 1000 }}
           />
         </Space>
       </Card>
@@ -322,7 +269,7 @@ function MerchantManage() {
           form={form}
           layout="vertical"
           initialValues={{
-            status: 'active',
+            status: 'YES',
           }}
         >
           <Form.Item
@@ -353,27 +300,6 @@ function MerchantManage() {
             ]}
           >
             <Input placeholder="请输入手机号" />
-          </Form.Item>
-
-          <Form.Item
-            label="公司/酒店"
-            name="company"
-            rules={[{ required: true, message: '请输入公司/酒店' }]}
-          >
-            <Input placeholder="请输入公司/酒店" />
-          </Form.Item>
-
-          <Form.Item
-            label="城市"
-            name="city"
-            rules={[{ required: true, message: '请选择城市' }]}
-          >
-            <Select placeholder="请选择城市">
-              <Select.Option value="北京">北京</Select.Option>
-              <Select.Option value="上海">上海</Select.Option>
-              <Select.Option value="杭州">杭州</Select.Option>
-              <Select.Option value="广州">广州</Select.Option>
-            </Select>
           </Form.Item>
 
           {!editingMerchant && (
@@ -410,25 +336,13 @@ function MerchantManage() {
             <Descriptions.Item label="手机号">
               {selectedMerchant.phone}
             </Descriptions.Item>
-            <Descriptions.Item label="公司/酒店">
-              {selectedMerchant.company}
-            </Descriptions.Item>
-            <Descriptions.Item label="城市">
-              {selectedMerchant.city}
-            </Descriptions.Item>
-            <Descriptions.Item label="酒店数量">
-              <Tag color="blue">{selectedMerchant.hotelCount} 家</Tag>
-            </Descriptions.Item>
             <Descriptions.Item label="状态">
-              <Tag color={selectedMerchant.status === 'active' ? 'green' : 'default'}>
-                {selectedMerchant.status === 'active' ? '正常' : '禁用'}
+              <Tag color={selectedMerchant.status === 'YES' ? 'green' : 'default'}>
+                {selectedMerchant.status === 'YES' ? '正常' : '禁用'}
               </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="注册时间">
               {selectedMerchant.registerTime}
-            </Descriptions.Item>
-            <Descriptions.Item label="最后登录">
-              {selectedMerchant.lastLogin}
             </Descriptions.Item>
           </Descriptions>
         )}

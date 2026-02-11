@@ -17,8 +17,9 @@ export class UserController {
     @Body('email') email: string,
     @Body('password') password: string,
     @Body('name') name: string,
+    @Body('role') role?: string,
   ) {
-    const user = await this.userService.create(email, password, name);
+    const user = await this.userService.create(email, password, name, role);
     const result = { ...user };
     delete result.passwordHash;
     return result;

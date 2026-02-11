@@ -1,0 +1,139 @@
+
+### Register
+POST http://localhost:3000/auth/register
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "123456",
+  "name": "Test User"
+}
+
+### Login
+# @name Login
+POST http://localhost:8888/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "123456"
+}
+
+### Get Profile (需要先登录获取 token)
+@token = {{Login.response.body.data.access_token}}
+###
+GET http://localhost:8888/auth/profile
+Authorization: Bearer {{token}}
+
+###
+GET http://localhost:8888/upload/image/ff46e659-b789-416f-ae08-e5b0d706db88.png
+Authorization: Bearer {{token}}
+
+###
+GET http://localhost:8888/room-type?hotelId=a7c5a01e-747d-4607-9310-9636cd17bf0f
+Authorization: Bearer {{token}}
+
+
+
+
+####################################################################
+# 小程序接口测试
+####################################################################
+
+### 小程序 - 获取北京酒店列表 (使用 list 接口)
+GET http://localhost:8888/mini/hotel/list?cityCode=beijing
+
+### 小程序 - 获取上海酒店列表
+GET http://localhost:8888/mini/hotel/list?cityCode=shanghai
+
+### 小程序 - 获取广州酒店列表
+GET http://localhost:8888/mini/hotel/list?cityCode=guangzhou
+
+### 小程序 - 获取深圳酒店列表
+GET http://localhost:8888/mini/hotel/list?cityCode=shenzhen
+
+### 小程序 - 获取杭州酒店列表
+GET http://localhost:8888/mini/hotel/list?cityCode=hangzhou
+
+### 小程序 - 获取成都酒店列表
+GET http://localhost:8888/mini/hotel/list?cityCode=chengdu
+
+### 小程序 - 获取酒店详情 (需要替换为实际的酒店ID)
+GET http://localhost:8888/mini/hotel/a7c5a01e-747d-4607-9310-9636cd17bf0f
+
+### 小程序 - 按城市代码查询所有酒店 (city 参数)
+GET http://localhost:8888/mini/hotel/city/beijing
+
+### 小程序 - 按城市代码查询所有酒店 (shanghai)
+GET http://localhost:8888/mini/hotel/city/shanghai
+
+### 小程序 - 获取 Banner 列表 (全部)
+GET http://localhost:8888/home-banner
+
+### 小程序 - 获取指定城市的 Banner
+GET http://localhost:8888/home-banner/city/beijing
+
+### 小程序 - 获取指定城市的 Banner (shanghai)
+GET http://localhost:8888/home-banner/city/shanghai
+
+### 小程序 - 获取 Banner 详情 (包含关联酒店信息)
+GET http://localhost:8888/home-banner/04013160-0fe8-4670-a231-a8c430487ea4
+
+### 小程序 - 获取酒店房型列表 (需要替换为实际的酒店ID)
+GET http://localhost:8888/room-type/hotel/a7c5a01e-747d-4607-9310-9636cd17bf0f
+
+### 小程序 - 搜索酒店 (管理员在线管理接口)
+GET http://localhost:8888/admin/online-manage/hotels?city=beijing&status=APPROVED&available=UP
+
+### 小程序 - 搜索酒店 (带关键词)
+GET http://localhost:8888/mini/hotel/search?nameZh=酒店
+
+### 小程序 - 搜索酒店 (按城市和星级)
+GET http://localhost:8888/mini/hotel/search?cityCode=beijing&starLevel=5
+
+### 小程序 - 搜索酒店 (按城市和星级 - 3星及以下)
+GET http://localhost:8888/mini/hotel/search?cityCode=shanghai&starLevel=3
+
+### 小程序 - 搜索酒店 (按城市和星级 - 4星及以下)
+GET http://localhost:8888/mini/hotel/search?cityCode=shanghai&starLevel=4
+
+### 小程序 - 搜索酒店 (按城市和星级 - 5星及以下)
+GET http://localhost:8888/mini/hotel/search?cityCode=shanghai&starLevel=5
+
+### 小程序 - 搜索酒店 (按英文名)
+GET http://localhost:8888/mini/hotel/search?nameEn=Hotel
+
+### 小程序 - 搜索酒店 (组合条件)
+GET http://localhost:8888/mini/hotel/search?cityCode=shanghai&nameZh=酒店&starLevel=4
+
+### 小程序 - 按星级查询酒店 (3星及以下)
+GET http://localhost:8888/mini/hotel/by-star-level?starLevel=3
+
+### 小程序 - 按星级查询酒店 (4星及以下)
+GET http://localhost:8888/mini/hotel/by-star-level?starLevel=4
+
+### 小程序 - 按星级查询酒店 (5星及以下)
+GET http://localhost:8888/mini/hotel/by-star-level?starLevel=5
+
+####################################################################
+# 小程序完整流程测试示例
+####################################################################
+
+### 1. 首页 - 获取 Banner
+GET http://localhost:8888/home-banner
+
+### 2. 首页 - 获取推荐酒店 (北京)
+GET http://localhost:8888/mini/hotel/list?cityCode=beijing
+
+### 3. 搜索 - 搜索酒店 (北京，关键词"酒店")
+GET http://localhost:8888/mini/hotel/search?cityCode=beijing&nameZh=酒店
+
+### 4. 酒店列表 - 切换城市到上海
+GET http://localhost:8888/mini/hotel/list?cityCode=shanghai
+
+### 5. 酒店列表 - 获取上海 Banner
+GET http://localhost:8888/home-banner/city/shanghai
+
+### 6. 酒店详情 - 查看酒店详情 (需要替换为实际的酒店ID)
+GET http://localhost:8888/mini/hotel/a7c5a01e-747d-4607-9310-9636cd17bf0f
+

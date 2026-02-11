@@ -41,17 +41,17 @@ export class RoomTypeService {
   }
 
   async submitForReview(id: string, userId: string): Promise<RoomTypeEntity | undefined> {
-    await this.roomTypeRepository.update(id, { status: 'pending', updatedBy: userId });
+    await this.roomTypeRepository.update(id, { status: 'PENDING', updatedBy: userId });
     return this.findOne(id);
   }
 
   async approve(id: string, userId: string): Promise<RoomTypeEntity | undefined> {
-    await this.roomTypeRepository.update(id, { status: 'approved', updatedBy: userId });
+    await this.roomTypeRepository.update(id, { status: 'APPROVED', updatedBy: userId });
     return this.findOne(id);
   }
 
   async reject(id: string, userId: string): Promise<RoomTypeEntity | undefined> {
-    await this.roomTypeRepository.update(id, { status: 'draft', updatedBy: userId });
+    await this.roomTypeRepository.update(id, { status: 'DRAFT', updatedBy: userId });
     return this.findOne(id);
   }
 
@@ -136,6 +136,35 @@ export class RoomTypeService {
     }
 
     return Array.from(roomTypesMap.values());
+  }
+
+  /************************小程序*****************************/
+
+  async getMiniRoomTypesByHotel(hotelId: string): Promise<any[]> {
+    const roomTypes = await this.roomTypeRepository
+      .createQueryBuilder('roomType')
+      .select([
+        'roomType.id',
+        'roomType.name',
+        'roomType.bedType',
+        'roomType.breakfast',
+        'roomType.areaSqm',
+        'roomType.maxGuests',
+        'roomType.status'
+      ])
+      .where('roomType.hotelId = :hotelId', { hotelId })
+      .andWhere('roomType.status = :status', { status: 'APPROVED' })
+      .getMany();
+
+    return roomTypes.map(roomType => ({
+      id: roomType.id,
+      name: roomType.name,
+      bedType: roomType.bedType,
+      breakfast: roomType.breakfast,
+      areaSqm: roomType.areaSqm,
+      maxGuests: roomType.maxGuests,
+      status: roomType.status
+    }));
   }
 
 }

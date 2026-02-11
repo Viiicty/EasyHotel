@@ -14,6 +14,8 @@ export class HomeBannerEntity extends BaseEntity {
   @JoinColumn({ name: 'hotel_id' })
   hotel?: HotelEntity;
 
+  @Column({ type: 'varchar', nullable: true, name: 'hotel_id', comment: '酒店ID' })
+  hotelId?: string;
 
   @Column({ type: 'int', nullable: true, comment: '排序' })
   sortNo?: number;

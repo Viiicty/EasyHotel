@@ -12,22 +12,42 @@ import { merchantInventoryApi } from '../../api/merchantInventory'
 
 const { RangePicker } = DatePicker
 
+const API_BASE = '/api'
+
+const getToken = () => {
+  return localStorage.getItem('token')
+}
+
+const getCurrentUserId = () => {
+  const user = localStorage.getItem('user')
+  if (user) {
+    try {
+      const parsed = JSON.parse(user)
+      return parsed.id
+    } catch (error) {
+      console.error('Error parsing user:', error)
+    }
+  }
+  return null
+}
+
 function RoomPrice() {
   console.log('RoomPrice component rendering')
   
   const [loading, setLoading] = useState(false)
   const [hotelLoading, setHotelLoading] = useState(false)
-  const [selectedDateRange, setSelectedDateRange] = useState([
-    dayjs().startOf('month'),
-    dayjs().endOf('month')
-  ])
+  const [selectedMonth, setSelectedMonth] = useState(dayjs())
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCell, setEditingCell] = useState(null)
   const [form] = Form.useForm()
   const [roomTypes, setRoomTypes] = useState([])
-  const [priceData, setPriceData] = useState([])
   const [hotels, setHotels] = useState([])
   const [selectedHotelId, setSelectedHotelId] = useState(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isEditingInventory, setIsEditingInventory] = useState(false)
+  const [roomPrices, setRoomPrices] = useState({})
+  const [roomInventory, setRoomInventory] = useState({})
+  const [roomTotalQty, setRoomTotalQty] = useState({})
 
   const formatDate = (date) => {
     return date.format('YYYY-MM-DD')
@@ -45,7 +65,28 @@ function RoomPrice() {
   const loadHotels = async () => {
     setHotelLoading(true)
     try {
-      const hotelsData = await merchantInventoryApi.getHotels()
+      const token = getToken()
+      const currentUserId = getCurrentUserId()
+      
+      const response = await fetch(`${API_BASE}/hotel`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error('获取酒店列表失败')
+      }
+      
+      const result = await response.json()
+      const hotelsData = (result.data || [])
+        .filter(item => item.merchantId === currentUserId && item.status === 'APPROVED')
+        .map(item => ({
+          hotelId: item.id,
+          nameZh: item.nameZh || '未知酒店',
+          status: item.status,
+        }))
+      
       setHotels(hotelsData)
       
       const savedHotelId = localStorage.getItem('selectedHotelId')
@@ -67,11 +108,11 @@ function RoomPrice() {
 
   const generateDates = () => {
     const dates = []
-    const start = selectedDateRange[0]
-    const end = selectedDateRange[1]
+    const start = selectedMonth.startOf('month')
+    const end = selectedMonth.endOf('month')
     let current = start
 
-    while (current.isBefore(end)) {
+    while (current.isBefore(end) || current.isSame(end)) {
       dates.push({
         date: formatDate(current),
         day: formatDay(current),
@@ -85,103 +126,57 @@ function RoomPrice() {
 
   const dates = generateDates()
 
-  const buildGrid = (
-    roomTypes,
-    dates,
-    priceMap,
-    inventoryMap
-  ) => {
-    const data = []
-    roomTypes.forEach(room => {
-      room.ratePlans.forEach(plan => {
-        const row = {
-          key: plan.ratePlanId,
-          roomTypeId: room.roomTypeId,
-          roomTypeName: room.roomTypeName,
-          ratePlanId: plan.ratePlanId,
-          ratePlanName: plan.planName,
-          basePrice: plan.basePrice,
-          currency: plan.currency,
-        }
-
-        dates.forEach(date => {
-          const priceKey = `${plan.ratePlanId}_${date.date}`
-          const inventoryKey = `${room.roomTypeId}_${date.date}`
-          
-          const dailyPrice = priceMap.get(priceKey)
-          const dailyInventory = inventoryMap.get(inventoryKey)
-
-          const price = dailyPrice?.price ?? plan.basePrice ?? 0
-          const totalQty = dailyInventory?.totalQty ?? 0
-          const remainQty = dailyInventory?.remainQty ?? 0
-          
-          const isClosed = totalQty === 0
-          const isSoldOut = totalQty > 0 && remainQty === 0
-
-          row[date.date] = {
-            price,
-            totalQty,
-            remainQty,
-            isClosed,
-            isSoldOut,
-          }
-        })
-
-        data.push(row)
-      })
-    })
-
-    return data
-  }
-
   const loadData = async (hotelId) => {
     if (!hotelId) {
       setRoomTypes([])
-      setPriceData([])
+      setRoomPrices({})
+      setRoomInventory({})
+      setRoomTotalQty({})
       return
     }
 
     setLoading(true)
     try {
-      const [roomTypesData] = await Promise.all([
-        merchantInventoryApi.getRoomTypes(hotelId),
-      ])
+      const token = getToken()
+      const response = await fetch(`${API_BASE}/room-type`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error('获取房型列表失败')
+      }
+      
+      const result = await response.json()
+      const allRoomTypesData = result.data || []
+      
+      const roomTypesData = allRoomTypesData
+        .filter(item => item.hotelId === hotelId && item.status === 'APPROVED')
+        .map(item => ({
+          roomTypeId: item.id,
+          roomTypeName: item.name || '未知房型',
+        }))
 
       setRoomTypes(roomTypesData)
 
-      if (roomTypesData.length === 0) {
-        setPriceData([])
-        return
-      }
-
-      const roomTypeIds = roomTypesData.map(rt => rt.roomTypeId)
-      const ratePlanIds = roomTypesData.flatMap(rt => rt.ratePlans.map(rp => rp.ratePlanId))
-
-      const [pricesData, inventoryData] = await Promise.all([
-        merchantInventoryApi.getDailyPrices(
-          ratePlanIds,
-          formatDate(selectedDateRange[0]),
-          formatDate(selectedDateRange[1])
-        ),
-        merchantInventoryApi.getDailyInventory(
-          roomTypeIds,
-          formatDate(selectedDateRange[0]),
-          formatDate(selectedDateRange[1])
-        ),
-      ])
-
-      const priceMap = new Map()
-      pricesData.forEach(item => {
-        priceMap.set(`${item.ratePlanId}_${item.date}`, item)
+      const prices = {}
+      const inventory = {}
+      const totalQty = {}
+      roomTypesData.forEach(roomType => {
+        prices[roomType.roomTypeId] = 100
+        totalQty[roomType.roomTypeId] = 1
+        inventory[roomType.roomTypeId] = {}
+        dates.forEach(date => {
+          inventory[roomType.roomTypeId][date.date] = {
+            totalQty: 1,
+            remainQty: 1,
+          }
+        })
       })
-
-      const inventoryMap = new Map()
-      inventoryData.forEach(item => {
-        inventoryMap.set(`${item.roomTypeId}_${item.date}`, item)
-      })
-
-      const gridData = buildGrid(roomTypesData, dates, priceMap, inventoryMap)
-      setPriceData(gridData)
+      setRoomPrices(prices)
+      setRoomInventory(inventory)
+      setRoomTotalQty(totalQty)
     } catch (error) {
       console.error('Failed to load data:', error)
       message.error('加载数据失败')
@@ -196,122 +191,56 @@ function RoomPrice() {
 
   useEffect(() => {
     loadData(selectedHotelId)
-  }, [selectedHotelId, selectedDateRange])
+  }, [selectedHotelId, selectedMonth])
 
-  const columns = [
-    {
-      title: '房型',
-      dataIndex: 'roomTypeName',
-      key: 'roomType',
-      fixed: 'left',
-      width: 150,
-      render: (text, record, index) => {
-        const isFirst = index === 0 || priceData[index - 1]?.roomTypeName !== text
-        return isFirst ? (
-          <div style={{ fontWeight: 'bold', padding: '8px 0' }}>{text}</div>
-        ) : null
-      },
-    },
-    {
-      title: '售卖方案',
-      dataIndex: 'ratePlanName',
-      key: 'ratePlan',
-      fixed: 'left',
-      width: 180,
-    },
-    ...dates.map(date => ({
-      title: (
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '12px', fontWeight: 'bold' }}>{date.day}</div>
-          <div style={{ fontSize: '10px', color: '#999' }}>{date.weekday}</div>
-        </div>
-      ),
-      dataIndex: date.date,
-      key: date.date,
-      width: 100,
-      align: 'center',
-      render: (value, record) => {
-        if (!value) return null
-        
-        let statusTag = null
-        if (value.isClosed) {
-          statusTag = <Tag color="red" style={{ margin: '4px 0 0 0', fontSize: '10px' }}>关房</Tag>
-        } else if (value.isSoldOut) {
-          statusTag = <Tag color="orange" style={{ margin: '4px 0 0 0', fontSize: '10px' }}>售罄</Tag>
-        } else {
-          statusTag = <Tag color="green" style={{ margin: '4px 0 0 0', fontSize: '10px' }}>可售</Tag>
-        }
-
-        return (
-          <div
-            style={{
-              padding: '8px',
-              cursor: 'pointer',
-              background: value.isClosed ? '#f5f5f5' : 'transparent',
-              opacity: value.isClosed ? 0.5 : 1,
-            }}
-            onClick={() => handleCellClick(value, date.date, record)}
-          >
-            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1890ff' }}>
-              ¥{value.price || 0}
-            </div>
-            <div style={{ fontSize: '12px', color: '#666' }}>
-              剩余: {value.remainQty || 0}
-            </div>
-            {statusTag}
-          </div>
-        )
-      },
-    })),
-  ]
-
-  const handleCellClick = (value, date, record) => {
-    setEditingCell({ 
-      ...value, 
-      date,
-      ratePlanId: record.ratePlanId,
-      roomTypeId: record.roomTypeId,
-    })
-    form.setFieldsValue({
-      price: value?.price || 0,
-      totalQty: value?.totalQty || 0,
-      status: value?.isClosed ? 'close' : 'open',
-    })
-    setIsModalOpen(true)
+  const handlePriceChange = (roomTypeId, value) => {
+    setRoomPrices(prev => ({
+      ...prev,
+      [roomTypeId]: value
+    }))
   }
 
-  const handleModalOk = async () => {
-    try {
-      const values = await form.validateFields()
-      
-      if (!editingCell?.ratePlanId || !editingCell?.roomTypeId) {
-        message.error('缺少必要信息')
-        return
-      }
+  const handleTotalQtyChange = (roomTypeId, value) => {
+    setRoomTotalQty(prev => ({
+      ...prev,
+      [roomTypeId]: value
+    }))
+  }
 
+  const handleEditPriceClick = () => {
+    setIsEditing(true)
+  }
+
+  const handleConfirmPriceClick = async () => {
+    try {
       setLoading(true)
       
-      const updatePricePromise = merchantInventoryApi.updateDailyPrice(
-        editingCell.ratePlanId,
-        {
-          date: editingCell.date,
-          price: values.price,
+      for (const roomType of roomTypes) {
+        const price = roomPrices[roomType.roomTypeId]
+        if (price !== undefined && price !== null) {
+          const startDate = selectedMonth.startOf('month').format('YYYY-MM-DD')
+          const endDate = selectedMonth.endOf('month').format('YYYY-MM-DD')
+          
+          const response = await fetch(`${API_BASE}/merchant/inventory/${roomType.roomTypeId}/daily`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${getToken()}`
+            },
+            body: JSON.stringify({
+              date: startDate,
+              totalQty: 10,
+            })
+          })
+          
+          if (!response.ok) {
+            throw new Error('更新库存失败')
+          }
         }
-      )
-
-      const updateInventoryPromise = merchantInventoryApi.updateDailyInventory(
-        editingCell.roomTypeId,
-        {
-          date: editingCell.date,
-          totalQty: values.totalQty,
-        }
-      )
-
-      await Promise.all([updatePricePromise, updateInventoryPromise])
+      }
       
       message.success('修改成功')
-      setIsModalOpen(false)
-      await loadData()
+      setIsEditing(false)
     } catch (error) {
       console.error('Failed to update:', error)
       message.error('修改失败')
@@ -320,8 +249,46 @@ function RoomPrice() {
     }
   }
 
-  const handleBatchUpdate = () => {
-    message.info('批量更新功能开发中')
+  const handleEditInventoryClick = () => {
+    setIsEditingInventory(true)
+  }
+
+  const handleConfirmInventoryClick = async () => {
+    try {
+      setLoading(true)
+      
+      for (const roomType of roomTypes) {
+        const totalQty = roomTotalQty[roomType.roomTypeId]
+        if (totalQty !== undefined && totalQty !== null) {
+          const startDate = selectedMonth.startOf('month').format('YYYY-MM-DD')
+          const endDate = selectedMonth.endOf('month').format('YYYY-MM-DD')
+          
+          const response = await fetch(`${API_BASE}/merchant/inventory/${roomType.roomTypeId}/daily`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${getToken()}`
+            },
+            body: JSON.stringify({
+              date: startDate,
+              totalQty: totalQty,
+            })
+          })
+          
+          if (!response.ok) {
+            throw new Error('更新库存失败')
+          }
+        }
+      }
+      
+      message.success('修改成功')
+      setIsEditingInventory(false)
+    } catch (error) {
+      console.error('Failed to update:', error)
+      message.error('修改失败')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -346,25 +313,26 @@ function RoomPrice() {
               </Select>
             </Col>
             <Col>
-              <RangePicker
-                value={selectedDateRange}
-                onChange={(dates) => setSelectedDateRange(dates)}
-                format="YYYY-MM-DD"
+              <DatePicker
+                picker="month"
+                value={selectedMonth}
+                onChange={(date) => setSelectedMonth(date)}
+                format="YYYY-MM"
               />
             </Col>
             <Col>
               <Space>
-                <Button type="primary" icon={<SaveOutlined />} onClick={handleBatchUpdate}>
-                  批量改价
+                <Button style={{ backgroundColor: '#faad14', borderColor: '#faad14', color: 'white' }} icon={<EditOutlined />} onClick={handleEditPriceClick} disabled={isEditing}>
+                  修改价格
                 </Button>
-                <Button icon={<SaveOutlined />} onClick={handleBatchUpdate}>
-                  批量改库存
+                <Button type="primary" icon={<SaveOutlined />} onClick={handleConfirmPriceClick} disabled={!isEditing}>
+                  确认价格
                 </Button>
-                <Button icon={<CloseCircleOutlined />} onClick={handleBatchUpdate}>
-                  批量关房
+                <Button style={{ backgroundColor: '#faad14', borderColor: '#faad14', color: 'white' }} icon={<EditOutlined />} onClick={handleEditInventoryClick} disabled={isEditingInventory}>
+                  修改房量
                 </Button>
-                <Button icon={<CheckCircleOutlined />} onClick={handleBatchUpdate}>
-                  批量开房
+                <Button type="primary" icon={<SaveOutlined />} onClick={handleConfirmInventoryClick} disabled={!isEditingInventory}>
+                  确认房量
                 </Button>
               </Space>
             </Col>
@@ -372,70 +340,86 @@ function RoomPrice() {
 
           {!selectedHotelId ? (
             <Empty description="请选择酒店后查看房态房价" />
+          ) : roomTypes.length === 0 ? (
+            <Empty description="暂无房型数据" />
           ) : (
-            <Table
-              dataSource={priceData}
-              columns={columns}
-              pagination={false}
-              scroll={{ x: 'max-content' }}
-              bordered
-              size="small"
-              loading={loading}
-            />
+            <Space direction="vertical" style={{ width: '100%' }} size="large">
+              {roomTypes.map(roomType => {
+                const price = roomPrices[roomType.roomTypeId] || 100
+                const totalQty = roomTotalQty[roomType.roomTypeId] || 1
+                const inv = roomInventory[roomType.roomTypeId] || {}
+                
+                return (
+                  <Card 
+                    key={roomType.roomTypeId} 
+                    title={roomType.roomTypeName} 
+                    bordered={false}
+                    style={{ background: '#fafafa' }}
+                  >
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 'max-content' }}>
+                        <tbody>
+                          <tr>
+                            <td style={{ width: '80px', border: '1px solid #f0f0f0', padding: '8px', fontWeight: 'bold' }}>日期</td>
+                            {dates.map(date => (
+                              <td key={date.date} style={{ width: '100px', border: '1px solid #f0f0f0', padding: '8px', background: '#fafafa', textAlign: 'center' }}>
+                                <div style={{ fontSize: '12px', fontWeight: 'bold' }}>{date.day}</div>
+                                <div style={{ fontSize: '10px', color: '#999' }}>{date.weekday}</div>
+                              </td>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td style={{ border: '1px solid #f0f0f0', padding: '8px', fontWeight: 'bold' }}>价格</td>
+                            {dates.map(date => (
+                              <td key={`price-${date.date}`} style={{ border: '1px solid #f0f0f0', padding: '8px', textAlign: 'center' }}>
+                                <InputNumber
+                                  min={0}
+                                  precision={0}
+                                  style={{ width: '80px' }}
+                                  prefix="¥"
+                                  defaultValue={price}
+                                  disabled={!isEditing}
+                                  onChange={(val) => handlePriceChange(roomType.roomTypeId, val)}
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td style={{ border: '1px solid #f0f0f0', padding: '8px', fontWeight: 'bold' }}>总</td>
+                            {dates.map(date => (
+                              <td key={`total-${date.date}`} style={{ border: '1px solid #f0f0f0', padding: '8px', textAlign: 'center' }}>
+                                <InputNumber
+                                  min={0}
+                                  precision={0}
+                                  style={{ width: '80px' }}
+                                  defaultValue={totalQty}
+                                  disabled={!isEditingInventory}
+                                  onChange={(val) => handleTotalQtyChange(roomType.roomTypeId, val)}
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td style={{ border: '1px solid #f0f0f0', padding: '8px', fontWeight: 'bold' }}>余</td>
+                            {dates.map(date => {
+                              const invData = inv[date.date] || {}
+                              return (
+                                <td key={`remain-${date.date}`} style={{ border: '1px solid #f0f0f0', padding: '8px', textAlign: 'center' }}>
+                                  {invData.remainQty || 1}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+                )
+              })}
+            </Space>
           )}
         </Space>
       </Card>
-
-      <Modal
-        title="修改房态房价"
-        open={isModalOpen}
-        onOk={handleModalOk}
-        onCancel={() => setIsModalOpen(false)}
-        width={400}
-        confirmLoading={loading}
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{
-            price: 0,
-            totalQty: 0,
-            status: 'open',
-          }}
-        >
-          <Form.Item label="日期">
-            <input value={editingCell?.date} disabled style={{ width: '100%', padding: '6px 11px', border: '1px solid #d9d9d9', borderRadius: '2px' }} />
-          </Form.Item>
-
-          <Form.Item
-            label="价格"
-            name="price"
-            rules={[{ required: true, message: '请输入价格' }]}
-          >
-            <InputNumber
-              min={0}
-              precision={0}
-              style={{ width: '100%' }}
-              prefix="¥"
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="库存"
-            name="totalQty"
-            rules={[{ required: true, message: '请输入库存' }]}
-          >
-            <InputNumber min={0} precision={0} style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item label="状态" name="status">
-            <Select>
-              <Select.Option value="open">开房</Select.Option>
-              <Select.Option value="close">关房</Select.Option>
-            </Select>
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   )
 }

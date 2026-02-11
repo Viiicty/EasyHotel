@@ -32,3 +32,4 @@ Authorization: Bearer {{token}}
 ###
 GET http://localhost:8888/room-type?hotelId=a7c5a01e-747d-4607-9310-9636cd17bf0f
 Authorization: Bearer {{token}}
+

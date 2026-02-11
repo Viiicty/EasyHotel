@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request, Qu
 import { AuthGuard } from '@nestjs/passport';
 import { RoomTypeService } from './room-type.service';
 import { RoomTypeEntity } from './room-type.entity';
+import { Public } from '../common/public.decorator';
 
 @Controller('room-type')
 export class RoomTypeController {
@@ -72,5 +73,18 @@ export class MerchantRoomTypeController {
   @Get()
   async getRoomTypes(@Query('hotelId') hotelId: string, @Request() req: any) {
     return this.roomTypeService.getRoomTypesByMerchant(req.user.id, hotelId);
+  }
+}
+
+/*********************小程序 *********************/
+
+@Controller('mini/room-type')
+export class MiniRoomTypeController {
+  constructor(private readonly roomTypeService: RoomTypeService) {}
+
+  @Public()
+  @Get('hotel/:hotelId')
+  async getRoomTypesByHotel(@Param('hotelId') hotelId: string): Promise<any[]> {
+    return this.roomTypeService.getMiniRoomTypesByHotel(hotelId);
   }
 }
