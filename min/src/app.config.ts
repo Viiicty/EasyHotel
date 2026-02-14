@@ -3,8 +3,11 @@ export default defineAppConfig({
     'pages/index/index',
     'pages/hotel/list',
     'pages/hotel/detail',
+    'pages/book/book',
     'pages/user/profile',
-    'pages/order/list'
+    'pages/order/list',
+    'pages/login/login',
+    'pages/register/register'
   ],
   window: {
     backgroundTextStyle: 'light',

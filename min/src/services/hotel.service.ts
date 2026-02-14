@@ -31,6 +31,8 @@ export interface Hotel {
   createdAt: string
   updatedAt: string
   coverImage?: string
+  address?: string
+  facilities?: string[]
   tags?: string[]
 }
 
@@ -124,18 +126,35 @@ export const hotelService = {
     city?: string
     keyword?: string
     starLevel?: number
-    status?: string
-    available?: string
+    tags?: string[]
+    page?: number
+    pageSize?: number
   }): Promise<Hotel[]> {
     try {
+      const queryParams: any = {}
+      if (params.city) {
+        queryParams.cityCode = params.city
+      }
+      if (params.keyword) {
+        queryParams.nameZh = params.keyword
+      }
+      if (params.starLevel) {
+        queryParams.starLevel = params.starLevel
+      }
+      if (params.tags && params.tags.length > 0) {
+        queryParams.tags = JSON.stringify(params.tags)
+      }
+      if (params.page) {
+        queryParams.page = params.page
+      }
+      if (params.pageSize) {
+        queryParams.pageSize = params.pageSize
+      }
+
       const res = await request({
         url: `${BASE_URL}/mini/hotel/search`,
         method: 'GET',
-        data: {
-          cityCode: params.city,
-          nameZh: params.keyword,
-          starLevel: params.starLevel
-        }
+        data: queryParams
       })
       return res.data.data || []
     } catch (error) {
@@ -187,12 +206,26 @@ export const hotelService = {
   async getRecommendHotels(limit: number = 4): Promise<Hotel[]> {
     try {
       const res = await request({
-        url: `${BASE_URL}/mini/hotel/recommend?limit=${limit}`,
-        method: 'GET'
+        url: `${BASE_URL}/mini/hotel/recommend`,
+        method: 'GET',
+        data: { limit }
       })
       return res.data.data || []
     } catch (error) {
       console.error('获取推荐酒店失败:', error)
+      return []
+    }
+  },
+
+  async getAllTags(): Promise<string[]> {
+    try {
+      const res = await request({
+        url: `${BASE_URL}/mini/hotel/tags`,
+        method: 'GET'
+      })
+      return res.data.data || []
+    } catch (error) {
+      console.error('获取标签失败:', error)
       return []
     }
   },

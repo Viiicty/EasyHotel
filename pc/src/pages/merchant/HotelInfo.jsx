@@ -420,6 +420,8 @@ function HotelInfo() {
               <Select.Option value="business">商务酒店</Select.Option>
               <Select.Option value="airport">近机场</Select.Option>
               <Select.Option value="subway">近地铁</Select.Option>
+              <Select.Option value="love">适合情侣</Select.Option>
+              <Select.Option value="car">接送机服务</Select.Option>
             </Select>
           </Form.Item>
 

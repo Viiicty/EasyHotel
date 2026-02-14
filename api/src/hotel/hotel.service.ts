@@ -268,6 +268,9 @@ export class HotelService {
     nameZh?: string
     nameEn?: string
     starLevel?: number
+    tags?: string[]
+    page?: number
+    pageSize?: number
   }): Promise<any[]> {
     const query = this.hotelRepository
       .createQueryBuilder('hotel')
@@ -309,7 +312,35 @@ export class HotelService {
       query.andWhere('hotel.starLevel <= :starLevel', { starLevel: params.starLevel });
     }
 
+    if (params.tags && params.tags.length > 0) {
+      const tagConditions = params.tags.map((tag, index) => `hotel.tags::jsonb @> :tag${index}`).join(' AND ');
+      const tagParams: any = {};
+      params.tags.forEach((tag, index) => {
+        tagParams[`tag${index}`] = `"${tag}"`;
+      });
+      query.andWhere(`(${tagConditions})`, tagParams);
+    }
+
+    const page = params.page || 1;
+    const pageSize = params.pageSize || 10;
+    const skip = (page - 1) * pageSize;
+
+    query.skip(skip).take(pageSize);
+
     const hotels = await query.getMany();
+
+    const hotelIds = hotels.map(hotel => hotel.id);
+    const banners = await this.dataSource.query(
+      'SELECT * FROM home_banner WHERE hotel_id = ANY($1) ORDER BY "sortNo" ASC',
+      [hotelIds]
+    );
+
+    const bannerMap = new Map();
+    banners.forEach(banner => {
+      bannerMap.set(banner.hotel_id, `http://192.168.3.22:8888/upload/image/${banner.coverImage}`);
+    });
+
+    const defaultCoverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
 
     return hotels.map(hotel => ({
       id: hotel.id,
@@ -328,7 +359,8 @@ export class HotelService {
       changePolicy: hotel.changePolicy,
       extraBedPolicy: hotel.extraBedPolicy,
       createdAt: hotel.createdTime,
-      updatedAt: hotel.updatedTime
+      updatedAt: hotel.updatedTime,
+      coverImage: bannerMap.get(hotel.id) || defaultCoverImage
     }));
   }
 
@@ -398,4 +430,22 @@ export class HotelService {
     }));
   }
 
+  async getAllTags(): Promise<string[]> {
+    const hotels = await this.hotelRepository
+      .createQueryBuilder('hotel')
+      .select(['hotel.tags'])
+      .where('hotel.status = :status', { status: 'APPROVED' })
+      .andWhere('hotel.available = :available', { available: 'UP' })
+      .andWhere('hotel.tags IS NOT NULL')
+      .getMany();
+
+    const allTags = new Set<string>();
+    hotels.forEach(hotel => {
+      if (hotel.tags && Array.isArray(hotel.tags)) {
+        hotel.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+
+    return Array.from(allTags).sort();
+  }
 }

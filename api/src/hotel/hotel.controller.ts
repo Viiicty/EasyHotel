@@ -116,13 +116,19 @@ export class MiniHotelController {
     @Query('cityCode') cityCode?: string,
     @Query('nameZh') nameZh?: string,
     @Query('nameEn') nameEn?: string,
-    @Query('starLevel') starLevel?: string
+    @Query('starLevel') starLevel?: string,
+    @Query('tags') tags?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string
   ): Promise<any[]> {
     return this.hotelService.searchMiniHotels({
       cityCode,
       nameZh,
       nameEn,
-      starLevel: starLevel ? parseInt(starLevel) : undefined
+      starLevel: starLevel ? parseInt(starLevel) : undefined,
+      tags: tags ? JSON.parse(tags) : undefined,
+      page: page ? parseInt(page) : 1,
+      pageSize: pageSize ? parseInt(pageSize) : 10
     });
   }
 
@@ -142,6 +148,12 @@ export class MiniHotelController {
     @Query('limit') limit?: string
   ): Promise<any[]> {
     return this.hotelService.getRandomRecommendHotels(limit ? parseInt(limit) : 4);
+  }
+
+  @Public()
+  @Get('tags')           //获取所有可用的标签
+  async getAllTags(): Promise<string[]> {
+    return this.hotelService.getAllTags();
   }
 
   @Public()

@@ -1,7 +1,8 @@
 import React, { Component } from 'react'
-import { View, Text, Swiper, SwiperItem, Picker, Input, Image } from '@tarojs/components'
+import { View, Text, Swiper, SwiperItem, Picker, Input, Image, ScrollView, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { hotelService, Banner, Hotel } from '../../services/hotel.service'
+import Calendar from '../../components/calendar/calendar'
 import './index.scss'
 
 interface SearchParams {
@@ -24,26 +25,23 @@ interface StarLevel {
   value: number
 }
 
-interface HotelTag {
-  label: string
-  value: string
-}
-
 interface IndexState {
   bannerList: Banner[]
   searchParams: SearchParams
   priceRanges: PriceRange[]
   starLevels: StarLevel[]
-  hotelTags: HotelTag[]
+  availableTags: string[]
   recommendHotels: Hotel[]
   loading: boolean
+  showCalendar: boolean
+  calendarType: 'checkIn' | 'checkOut'
 }
 
 export default class Index extends Component<{}, IndexState> {
   state = {
     bannerList: [],
     searchParams: {
-      city: '北京',
+      city: '',
       hotelName: '',
       checkIn: '02-10',
       checkOut: '02-11',
@@ -65,23 +63,18 @@ export default class Index extends Component<{}, IndexState> {
       { label: '四星级', value: 4 },
       { label: '五星级', value: 5 }
     ],
-    hotelTags: [
-      { label: '不限', value: '' },
-      { label: '市中心', value: '市中心' },
-      { label: '近地铁', value: '近地铁' },
-      { label: '江景', value: '江景' },
-      { label: '海景', value: '海景' },
-      { label: '山景', value: '山景' },
-      { label: '商务', value: '商务' },
-      { label: '度假', value: '度假' }
-    ],
+    hotelTags: [],
+    availableTags: [],
     recommendHotels: [],
-    loading: false
+    loading: false,
+    showCalendar: false,
+    calendarType: 'checkIn'
   }
 
   componentDidShow() {
     this.loadBanners()
     this.loadRecommendHotels()
+    this.loadAllTags()
   }
 
   componentDidHide() {}
@@ -108,12 +101,23 @@ export default class Index extends Component<{}, IndexState> {
     }
   }
 
+  loadAllTags = async () => {
+    try {
+      const tags = await hotelService.getAllTags()
+      console.log('All tags loaded:', tags)
+      this.setState({ availableTags: tags || [] })
+    } catch (error) {
+      console.error('加载标签失败:', error)
+      this.setState({ availableTags: [] })
+    }
+  }
+
   handleBannerClick = (banner: Banner) => {
     console.log('Banner clicked:', banner)
     const hotelId = banner.hotel?.id || banner.hotelId
     console.log('Final hotelId:', hotelId)
     if (hotelId) {
-      Taro.navigateTo({
+      Taro.redirectTo({
         url: `/pages/hotel/detail?id=${hotelId}`
       })
     } else {
@@ -125,7 +129,7 @@ export default class Index extends Component<{}, IndexState> {
   }
 
   handleHotelClick = (hotel: Hotel) => {
-    Taro.navigateTo({
+    Taro.redirectTo({
       url: `/pages/hotel/detail?id=${hotel.id}`
     })
   }
@@ -155,12 +159,13 @@ export default class Index extends Component<{}, IndexState> {
     return labelMap[tag] || tag
   }
 
-  handleCityChange = async (e) => {
-    const cityCode = e.detail.value
+  handleCityChange = (e) => {
+    const cityOptions = ['不限', '北京', '上海', '广州', '深圳', '杭州', '成都']
+    const selectedCity = cityOptions[e.detail.value]
     this.setState({
       searchParams: {
         ...this.state.searchParams,
-        city: cityCode
+        city: selectedCity === '不限' ? '' : selectedCity
       }
     })
   }
@@ -194,7 +199,7 @@ export default class Index extends Component<{}, IndexState> {
     })
   }
 
-  handleTagToggle = (tag) => {
+  handleTagToggle = (tag: { label: string, value: string }) => {
     const { tags } = this.state.searchParams
     const newTags = tags.includes(tag.value)
       ? tags.filter(t => t !== tag.value)
@@ -207,6 +212,29 @@ export default class Index extends Component<{}, IndexState> {
     })
   }
 
+  handleCheckInClick = () => {
+    this.setState({ showCalendar: true, calendarType: 'checkIn' })
+  }
+
+  handleCheckOutClick = () => {
+    this.setState({ showCalendar: true, calendarType: 'checkOut' })
+  }
+
+  handleCalendarConfirm = (startDate: string, endDate: string) => {
+    this.setState({
+      searchParams: {
+        ...this.state.searchParams,
+        checkIn: startDate,
+        checkOut: endDate
+      },
+      showCalendar: false
+    })
+  }
+
+  handleCalendarClose = () => {
+    this.setState({ showCalendar: false })
+  }
+
   handleSearch = async () => {
     const { searchParams } = this.state
     Taro.showToast({
@@ -216,10 +244,10 @@ export default class Index extends Component<{}, IndexState> {
 
     try {
       const hotels = await hotelService.searchHotels({
-        keyword: searchParams.hotelName || undefined,
+        city: searchParams.city,
+        keyword: searchParams.hotelName,
         starLevel: searchParams.starLevel > 0 ? searchParams.starLevel : undefined,
-        status: 'APPROVED',
-        available: 'UP'
+        tags: searchParams.tags
       })
 
       Taro.hideToast()
@@ -248,7 +276,7 @@ export default class Index extends Component<{}, IndexState> {
               {this.state.bannerList.map((banner) => (
                 <SwiperItem key={banner.id}>
                   <View className='banner-item' onClick={() => this.handleBannerClick(banner)}>
-                    {banner.coverImage && <Image className='banner-image' src={banner.coverImage} mode='aspectFill' />}
+                    {banner.coverImage && <Image className='banner-image' src={banner.coverImage} mode='aspectFill' lazyLoad />}
                   </View>
                 </SwiperItem>
               ))}
@@ -268,9 +296,9 @@ export default class Index extends Component<{}, IndexState> {
           <View className='search-form'>
             <View className='form-item'>
               <Text className='form-label'>城市</Text>
-              <Picker mode='selector' range={['北京', '上海', '广州', '深圳', '杭州', '成都']} onChange={this.handleCityChange}>
+              <Picker mode='selector' range={['不限', '北京', '上海', '广州', '深圳', '杭州', '成都']} onChange={this.handleCityChange}>
                 <View className='form-value'>
-                  <Text>{this.state.searchParams.city}</Text>
+                  <Text>{this.state.searchParams.city || '不限'}</Text>
                   <Text className='arrow'>▼</Text>
                 </View>
               </Picker>
@@ -287,24 +315,19 @@ export default class Index extends Component<{}, IndexState> {
             </View>
 
             <View className='form-row'>
-              <View className='form-item'>
+              <View className='form-item' onClick={this.handleCheckInClick}>
                 <Text className='form-label'>入住日期</Text>
-                <Picker mode='date' onChange={(e) => this.setState({ searchParams: { ...this.state.searchParams, checkIn: e.detail.value } })}>
-                  <View className='form-value'>
-                    <Text>{this.state.searchParams.checkIn}</Text>
-                    <Text className='arrow'>▼</Text>
-                  </View>
-                </Picker>
+                <View className='form-value'>
+                  <Text>{this.state.searchParams.checkIn}</Text>
+                  <Text className='arrow'>▼</Text>
+                </View>
               </View>
-
-              <View className='form-item'>
+              <View className='form-item' onClick={this.handleCheckOutClick}>
                 <Text className='form-label'>退房日期</Text>
-                <Picker mode='date' onChange={(e) => this.setState({ searchParams: { ...this.state.searchParams, checkOut: e.detail.value } })}>
-                  <View className='form-value'>
-                    <Text>{this.state.searchParams.checkOut}</Text>
-                    <Text className='arrow'>▼</Text>
-                  </View>
-                </Picker>
+                <View className='form-value'>
+                  <Text>{this.state.searchParams.checkOut}</Text>
+                  <Text className='arrow'>▼</Text>
+                </View>
               </View>
             </View>
 
@@ -333,13 +356,19 @@ export default class Index extends Component<{}, IndexState> {
             <View className='form-item'>
               <Text className='form-label'>酒店标签</Text>
               <View className='tags-container'>
-                {this.state.hotelTags.map((tag, index) => (
+                <View
+                  className={`tag-item ${this.state.searchParams.tags.length === 0 ? 'active' : ''}`}
+                  onClick={() => this.setState({ searchParams: { ...this.state.searchParams, tags: [] } })}
+                >
+                  <Text className='tag-text'>不限</Text>
+                </View>
+                {this.state.availableTags.map((tag, index) => (
                   <View
                     key={index}
-                    className={`tag-item ${this.state.searchParams.tags.includes(tag.value) ? 'active' : ''}`}
-                    onClick={() => this.handleTagToggle(tag)}
+                    className={`tag-item ${this.state.searchParams.tags.includes(tag) ? 'active' : ''}`}
+                    onClick={() => this.handleTagToggle({ label: this.getTagLabel(tag), value: tag })}
                   >
-                    <Text className='tag-text'>{tag.label}</Text>
+                    <Text className='tag-text'>{this.getTagLabel(tag)}</Text>
                   </View>
                 ))}
               </View>
@@ -363,7 +392,7 @@ export default class Index extends Component<{}, IndexState> {
             {this.state.recommendHotels.length > 0 ? (
               this.state.recommendHotels.map((hotel) => (
                 <View key={hotel.id} className='hotel-card' onClick={() => this.handleHotelClick(hotel)}>
-                  {hotel.coverImage && <Image className='hotel-cover' src={hotel.coverImage} mode='aspectFill' />}
+                  {hotel.coverImage && <Image className='hotel-cover' src={hotel.coverImage} mode='aspectFill' lazyLoad />}
                   <View className='hotel-content'>
                     <Text className='hotel-name'>{hotel.hotelName}</Text>
                     <Text className='hotel-name-en'>{hotel.hotelNameEn}</Text>
@@ -388,6 +417,14 @@ export default class Index extends Component<{}, IndexState> {
             )}
           </View>
         </View>
+
+        <Calendar
+          visible={this.state.showCalendar}
+          startDate={this.state.searchParams.checkIn}
+          endDate={this.state.searchParams.checkOut}
+          onConfirm={this.handleCalendarConfirm}
+          onClose={this.handleCalendarClose}
+        />
       </View>
     )
   }

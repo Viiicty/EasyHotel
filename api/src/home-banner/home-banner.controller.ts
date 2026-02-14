@@ -40,7 +40,8 @@ export class HomeBannerController {
     return this.homeBannerService.remove(id);
   }
 
-  /********小程序*********/
+  /*********************小程序 *********************/
+
   @Public()
   @Get('mini/active')
   async findActiveBanners(): Promise<HomeBannerEntity[]> {

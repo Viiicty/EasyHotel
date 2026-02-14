@@ -42,4 +42,32 @@ export class UserController {
   async getUserById(@Param('id') id: string) {
     return this.userService.findById(id);
   }
+
+  @Public()
+  @Get('phone/:phone')
+  async getUserByPhone(@Param('phone') phone: string) {
+    return this.userService.findByPhone(phone);
+  }
+
+  /*********************小程序 *********************/
+
+  @Public()
+  @Post('mini/register')
+  async miniRegister(
+    @Body('phone') phone: string,
+    @Body('password') password: string,
+    @Body('name') name: string,
+    @Body('email') email?: string,
+  ) {
+    const user = await this.userService.createMiniUser(phone, password, name, email);
+    const result = { ...user };
+    delete result.passwordHash;
+    return result;
+  }
+
+  @Public()
+  @Get('mini/phone/:phone')
+  async getMiniUserByPhone(@Param('phone') phone: string) {
+    return this.userService.findMiniUserByPhone(phone);
+  }
 }

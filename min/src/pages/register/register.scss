@@ -1,0 +1,107 @@
+.register-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .register-container {
+    width: 100%;
+    padding: 60px 40px;
+
+    .register-header {
+      text-align: center;
+      margin-bottom: 60px;
+
+      .register-title {
+        font-size: 48px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 16px;
+      }
+
+      .register-subtitle {
+        font-size: 28px;
+        color: #999;
+      }
+    }
+
+    .register-form {
+      .form-item {
+        margin-bottom: 30px;
+        position: relative;
+
+        .form-input {
+          width: 100%;
+          height: 100px;
+          padding: 0 30px;
+          background-color: #fff;
+          border-radius: 12px;
+          font-size: 28px;
+          border: none;
+
+          &.code-input {
+            padding-right: 220px;
+          }
+        }
+
+        .code-btn {
+          position: absolute;
+          right: 20px;
+          top: 50%;
+          transform: translateY(-50%);
+          padding: 0 30px;
+          height: 60px;
+          line-height: 60px;
+          background-color: #1890ff;
+          color: #fff;
+          font-size: 24px;
+          border: none;
+          border-radius: 8px;
+          z-index: 10;
+
+          &.disabled {
+            background-color: #ccc;
+            color: #fff;
+          }
+
+          &::after {
+            border: none;
+          }
+        }
+      }
+
+      .register-btn {
+        width: 100%;
+        height: 100px;
+        line-height: 100px;
+        background-color: #1890ff;
+        color: #fff;
+        font-size: 32px;
+        font-weight: 500;
+        border: none;
+        border-radius: 12px;
+        margin-top: 40px;
+
+        &::after {
+          border: none;
+        }
+      }
+    }
+
+    .register-footer {
+      text-align: center;
+      margin-top: 40px;
+
+      .footer-text {
+        font-size: 24px;
+        color: #999;
+      }
+
+      .footer-link {
+        font-size: 24px;
+        color: #1890ff;
+      }
+    }
+  }
+}
