@@ -74,6 +74,16 @@ export class MerchantRoomTypeController {
   async getRoomTypes(@Query('hotelId') hotelId: string, @Request() req: any) {
     return this.roomTypeService.getRoomTypesByMerchant(req.user.id, hotelId);
   }
+
+  @Put(':roomTypeId/default-price')
+  async updateDefaultPrice(@Param('roomTypeId') roomTypeId: string, @Body() body: { defaultPrice: number }, @Request() req: any) {
+    return this.roomTypeService.updateDefaultPrice(req.user.id, roomTypeId, body.defaultPrice);
+  }
+
+  @Put(':roomTypeId/default-inventory')
+  async updateDefaultInventory(@Param('roomTypeId') roomTypeId: string, @Body() body: { defaultInventory: number }, @Request() req: any) {
+    return this.roomTypeService.updateDefaultInventory(req.user.id, roomTypeId, body.defaultInventory);
+  }
 }
 
 /*********************小程序 *********************/

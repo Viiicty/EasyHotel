@@ -111,27 +111,50 @@ export default class LoginPage extends Component<{}, LoginState> {
     try {
       Taro.showLoading({ title: '登录中...' })
 
+      console.log('=== 开始登录请求 ===')
+      console.log('请求URL:', 'http://192.168.3.22:8888/auth/mini/login')
+      console.log('请求数据:', { phone })
+
       const res = await Taro.request({
-        url: 'http://192.168.3.22:8888/auth/mini/phone/' + phone,
-        method: 'GET',
+        url: 'http://192.168.3.22:8888/auth/mini/login',
+        method: 'POST',
         header: {
           'Content-Type': 'application/json'
+        },
+        data: {
+          phone: phone
         }
       })
 
       Taro.hideLoading()
 
-      console.log('后端返回:', res)
-      console.log('res.data:', res.data)
-      console.log('res.data.data:', res.data?.data)
+      console.log('=== 登录响应 ===')
+      console.log('响应状态码:', res.statusCode)
+      console.log('响应数据:', res.data)
+      console.log('响应数据.data:', res.data?.data)
+      console.log('响应数据.data 是否存在:', !!res.data?.data)
 
-      if (res.statusCode === 200 && res.data && res.data.data && res.data.data.id) {
+      if ((res.statusCode === 200 || res.statusCode === 201) && res.data && res.data.data) {
         const user = res.data.data
+
+        console.log('=== 登录成功 ===')
+        console.log('用户信息:', user)
+        console.log('用户ID:', user.id)
+        console.log('用户Token:', user.access_token)
+        console.log('用户name:', user.name)
+        console.log('用户phone:', user.phone)
+        console.log('用户idCard:', user.idCard)
+        console.log('所有字段:', Object.keys(user))
 
         userService.setUserInfo({
           id: user.id,
-          token: user.id
+          token: user.access_token,
+          name: user.name,
+          phone: user.phone,
+          idCard: user.idCard
         })
+
+        console.log('保存后的用户信息:', userService.getUserInfo())
 
         Taro.showToast({
           title: '登录成功',
@@ -142,7 +165,8 @@ export default class LoginPage extends Component<{}, LoginState> {
           Taro.navigateBack()
         }, 1500)
       } else {
-        console.log('用户不存在，跳转注册')
+        console.log('=== 用户不存在，跳转注册 ===')
+        console.log('原因: res.statusCode=', res.statusCode, ', res.data=', res.data, ', res.data.data=', res.data?.data)
         Taro.showModal({
           title: '账号不存在',
           content: '该手机号尚未注册，是否前往注册？',
@@ -159,7 +183,8 @@ export default class LoginPage extends Component<{}, LoginState> {
       }
     } catch (error) {
       Taro.hideLoading()
-      console.error('登录失败:', error)
+      console.error('=== 登录失败 ===')
+      console.error('错误信息:', error)
       Taro.showToast({
         title: '登录失败，请重试',
         icon: 'none'

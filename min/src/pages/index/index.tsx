@@ -43,8 +43,8 @@ export default class Index extends Component<{}, IndexState> {
     searchParams: {
       city: '',
       hotelName: '',
-      checkIn: '02-10',
-      checkOut: '02-11',
+      checkIn: '2026-02-10',
+      checkOut: '2026-02-11',
       priceRange: [0, 1000],
       starLevel: 0,
       tags: []
@@ -92,7 +92,11 @@ export default class Index extends Component<{}, IndexState> {
 
   loadRecommendHotels = async () => {
     try {
-      const hotels = await hotelService.getRecommendHotels(4)
+      const today = new Date()
+      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+      console.log('查询日期:', dateStr)
+
+      const hotels = await hotelService.getRecommendHotels(4, dateStr)
       console.log('Recommend hotels loaded:', hotels)
       this.setState({ recommendHotels: hotels || [] })
     } catch (error) {
@@ -117,8 +121,9 @@ export default class Index extends Component<{}, IndexState> {
     const hotelId = banner.hotel?.id || banner.hotelId
     console.log('Final hotelId:', hotelId)
     if (hotelId) {
+      const { searchParams } = this.state
       Taro.redirectTo({
-        url: `/pages/hotel/detail?id=${hotelId}`
+        url: `/pages/hotel/detail?id=${hotelId}&checkIn=${searchParams.checkIn}&checkOut=${searchParams.checkOut}`
       })
     } else {
       Taro.showToast({
@@ -129,8 +134,9 @@ export default class Index extends Component<{}, IndexState> {
   }
 
   handleHotelClick = (hotel: Hotel) => {
+    const { searchParams } = this.state
     Taro.redirectTo({
-      url: `/pages/hotel/detail?id=${hotel.id}`
+      url: `/pages/hotel/detail?id=${hotel.id}&checkIn=${searchParams.checkIn}&checkOut=${searchParams.checkOut}`
     })
   }
 
@@ -235,6 +241,15 @@ export default class Index extends Component<{}, IndexState> {
     this.setState({ showCalendar: false })
   }
 
+  formatDateDisplay = (dateStr: string): string => {
+    if (!dateStr) return ''
+    const parts = dateStr.split('-')
+    if (parts.length === 3) {
+      return `${parseInt(parts[1])}月${parseInt(parts[2])}日`
+    }
+    return dateStr
+  }
+
   handleSearch = async () => {
     const { searchParams } = this.state
     Taro.showToast({
@@ -247,7 +262,9 @@ export default class Index extends Component<{}, IndexState> {
         city: searchParams.city,
         keyword: searchParams.hotelName,
         starLevel: searchParams.starLevel > 0 ? searchParams.starLevel : undefined,
-        tags: searchParams.tags
+        tags: searchParams.tags,
+        checkIn: searchParams.checkIn,
+        checkOut: searchParams.checkOut
       })
 
       Taro.hideToast()
@@ -318,14 +335,14 @@ export default class Index extends Component<{}, IndexState> {
               <View className='form-item' onClick={this.handleCheckInClick}>
                 <Text className='form-label'>入住日期</Text>
                 <View className='form-value'>
-                  <Text>{this.state.searchParams.checkIn}</Text>
+                  <Text>{this.formatDateDisplay(this.state.searchParams.checkIn)}</Text>
                   <Text className='arrow'>▼</Text>
                 </View>
               </View>
               <View className='form-item' onClick={this.handleCheckOutClick}>
                 <Text className='form-label'>退房日期</Text>
                 <View className='form-value'>
-                  <Text>{this.state.searchParams.checkOut}</Text>
+                  <Text>{this.formatDateDisplay(this.state.searchParams.checkOut)}</Text>
                   <Text className='arrow'>▼</Text>
                 </View>
               </View>
@@ -407,6 +424,12 @@ export default class Index extends Component<{}, IndexState> {
                       </View>
                     )}
                     <View className='hotel-address'>📍 {hotel.address}</View>
+                    {hotel.minPrice && (
+                      <View className='hotel-price'>
+                        <Text className='price'>¥{hotel.minPrice}</Text>
+                        <Text className='price-unit'>起</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
               ))

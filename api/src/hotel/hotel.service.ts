@@ -168,7 +168,7 @@ export class HotelService {
 
 /************************小程序*****************************/
 
-  async getMiniHotelsByCityCode(cityCode: string): Promise<any[]> {
+  async getMiniHotelsByCityCode(cityCode: string, date?: string): Promise<any[]> {
     const hotels = await this.hotelRepository
       .createQueryBuilder('hotel')
       .select([
@@ -195,25 +195,98 @@ export class HotelService {
       .andWhere('hotel.available = :available', { available: 'UP' })
       .getMany();
 
-    return hotels.map(hotel => ({
-      id: hotel.id,
-      hotelName: hotel.nameZh,
-      hotelNameEn: hotel.nameEn,
-      city: hotel.cityCode,
-      starLevel: hotel.starLevel,
-      status: hotel.status,
-      available: hotel.available,
-      address: hotel.address,
-      facilities: hotel.facilities,
-      tags: hotel.tags,
-      checkInTime: hotel.checkInTime,
-      checkOutTime: hotel.checkOutTime,
-      cancelPolicy: hotel.cancelPolicy,
-      changePolicy: hotel.changePolicy,
-      extraBedPolicy: hotel.extraBedPolicy,
-      createdAt: hotel.createdTime,
-      updatedAt: hotel.updatedTime
-    }));
+    const hotelIds = hotels.map(hotel => hotel.id);
+    const banners = await this.dataSource.query(
+      'SELECT * FROM home_banner WHERE hotel_id = ANY($1) ORDER BY "sortNo" ASC',
+      [hotelIds]
+    );
+
+    const bannerMap = new Map();
+    banners.forEach(banner => {
+      bannerMap.set(banner.hotel_id, `http://192.168.3.22:8888/upload/image/${banner.coverImage}`);
+    });
+
+    const defaultCoverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
+
+    const { RoomTypeEntity } = await import('../room-type/room-type.entity');
+    const roomTypeRepository = this.dataSource.getRepository(RoomTypeEntity);
+
+    const roomTypes = await roomTypeRepository
+      .createQueryBuilder('rt')
+      .select(['rt.hotelId', 'rt.id', 'rt.name', 'rt.status', 'rt.defaultPrice'])
+      .where('rt.hotelId IN (:...hotelIds)', { hotelIds })
+      .andWhere('rt.status = :status', { status: 'APPROVED' })
+      .getMany();
+
+    console.log('Room types from TypeORM:', roomTypes);
+
+    let dailyPrices: any[] = []
+    if (date) {
+      const { RoomTypePriceDailyEntity } = await import('../room-type-price-daily/room-type-price-daily.entity');
+      const priceRepository = this.dataSource.getRepository(RoomTypePriceDailyEntity);
+
+      dailyPrices = await priceRepository
+        .createQueryBuilder('p')
+        .select(['p.roomTypeId', 'p.price'])
+        .where('p.date = :date', { date })
+        .andWhere('p.roomTypeId IN (:...roomTypeIds)', { roomTypeIds: roomTypes.map(rt => rt.id) })
+        .getMany();
+
+      console.log('Daily prices:', dailyPrices);
+    }
+
+    const priceMap = new Map();
+    dailyPrices.forEach(p => {
+      priceMap.set(p.roomTypeId, p.price);
+    });
+
+    const roomTypeMap = new Map();
+    roomTypes.forEach(rt => {
+      if (!roomTypeMap.has(rt.hotelId)) {
+        roomTypeMap.set(rt.hotelId, []);
+      }
+      roomTypeMap.get(rt.hotelId)!.push(rt);
+    });
+
+    return hotels.map(hotel => {
+      const hotelRoomTypes = roomTypeMap.get(hotel.id) || []
+      const approvedRoomTypes = hotelRoomTypes.filter(rt => rt.status === 'APPROVED')
+      console.log('酒店:', hotel.nameZh, '房型数量:', hotelRoomTypes.length, '已审核房型数量:', approvedRoomTypes.length)
+
+      const prices = approvedRoomTypes.map(rt => {
+        const dailyPrice = priceMap.get(rt.id)
+        if (dailyPrice && dailyPrice > 0) {
+          return parseFloat(dailyPrice)
+        }
+        return parseFloat(rt.defaultPrice || 0)
+      }).filter(p => p > 0)
+
+      console.log('房型价格:', prices)
+      const minPrice = prices.length > 0 ? Math.min(...prices) : undefined
+      console.log('最低价格:', minPrice)
+
+      return {
+        id: hotel.id,
+        hotelName: hotel.nameZh,
+        hotelNameEn: hotel.nameEn,
+        city: hotel.cityCode,
+        starLevel: hotel.starLevel,
+        status: hotel.status,
+        available: hotel.available,
+        address: hotel.address,
+        facilities: hotel.facilities,
+        tags: hotel.tags,
+        checkInTime: hotel.checkInTime,
+        checkOutTime: hotel.checkOutTime,
+        cancelPolicy: hotel.cancelPolicy,
+        changePolicy: hotel.changePolicy,
+        extraBedPolicy: hotel.extraBedPolicy,
+        createdAt: hotel.createdTime,
+        updatedAt: hotel.updatedTime,
+        coverImage: bannerMap.get(hotel.id) || defaultCoverImage,
+        minPrice
+      }
+    })
   }
 
   async getMiniHotelDetail(id: string): Promise<any> {
@@ -271,6 +344,8 @@ export class HotelService {
     tags?: string[]
     page?: number
     pageSize?: number
+    checkIn?: string
+    checkOut?: string
   }): Promise<any[]> {
     const query = this.hotelRepository
       .createQueryBuilder('hotel')
@@ -342,29 +417,105 @@ export class HotelService {
 
     const defaultCoverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
 
-    return hotels.map(hotel => ({
-      id: hotel.id,
-      hotelName: hotel.nameZh,
-      hotelNameEn: hotel.nameEn,
-      city: hotel.cityCode,
-      starLevel: hotel.starLevel,
-      status: hotel.status,
-      available: hotel.available,
-      address: hotel.address,
-      facilities: hotel.facilities,
-      tags: hotel.tags,
-      checkInTime: hotel.checkInTime,
-      checkOutTime: hotel.checkOutTime,
-      cancelPolicy: hotel.cancelPolicy,
-      changePolicy: hotel.changePolicy,
-      extraBedPolicy: hotel.extraBedPolicy,
-      createdAt: hotel.createdTime,
-      updatedAt: hotel.updatedTime,
-      coverImage: bannerMap.get(hotel.id) || defaultCoverImage
-    }));
+    const { RoomTypeEntity } = await import('../room-type/room-type.entity');
+    const roomTypeRepository = this.dataSource.getRepository(RoomTypeEntity);
+
+    const roomTypes = await roomTypeRepository
+      .createQueryBuilder('rt')
+      .select(['rt.hotelId', 'rt.id', 'rt.name', 'rt.status', 'rt.defaultPrice'])
+      .where('rt.hotelId IN (:...hotelIds)', { hotelIds })
+      .andWhere('rt.status = :status', { status: 'APPROVED' })
+      .getMany();
+
+    console.log('Room types from TypeORM:', roomTypes);
+
+    let dailyPrices: any[] = []
+    let nights = 1
+
+    if (params.checkIn && params.checkOut) {
+      const checkInDate = new Date(params.checkIn)
+      const checkOutDate = new Date(params.checkOut)
+      nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
+      console.log('入住天数:', nights)
+
+      const { RoomTypePriceDailyEntity } = await import('../room-type-price-daily/room-type-price-daily.entity');
+      const priceRepository = this.dataSource.getRepository(RoomTypePriceDailyEntity);
+
+      dailyPrices = await priceRepository
+        .createQueryBuilder('p')
+        .select(['p.roomTypeId', 'p.date', 'p.price'])
+        .where('p.date >= :checkIn', { checkIn: params.checkIn })
+        .andWhere('p.date < :checkOut', { checkOut: params.checkOut })
+        .andWhere('p.roomTypeId IN (:...roomTypeIds)', { roomTypeIds: roomTypes.map(rt => rt.id) })
+        .getMany();
+
+      console.log('Daily prices:', dailyPrices);
+    }
+
+    const priceMap = new Map();
+    dailyPrices.forEach(p => {
+      if (!priceMap.has(p.roomTypeId)) {
+        priceMap.set(p.roomTypeId, []);
+      }
+      priceMap.get(p.roomTypeId)!.push({ date: p.date, price: p.price });
+    });
+
+    const roomTypeMap = new Map();
+    roomTypes.forEach(rt => {
+      if (!roomTypeMap.has(rt.hotelId)) {
+        roomTypeMap.set(rt.hotelId, []);
+      }
+      roomTypeMap.get(rt.hotelId)!.push(rt);
+    });
+
+    return hotels.map(hotel => {
+      const hotelRoomTypes = roomTypeMap.get(hotel.id) || []
+      const approvedRoomTypes = hotelRoomTypes.filter(rt => rt.status === 'APPROVED')
+      console.log('酒店:', hotel.nameZh, '房型数量:', hotelRoomTypes.length, '已审核房型数量:', approvedRoomTypes.length)
+
+      const prices = approvedRoomTypes.map(rt => {
+        const dailyPriceList = priceMap.get(rt.id) || []
+        if (dailyPriceList.length > 0) {
+          const minDailyPrice = Math.min(...dailyPriceList.map(p => parseFloat(p.price)))
+          console.log(`房型 ${rt.name} 每日最低价格:`, minDailyPrice)
+          if (nights === 1) {
+            return minDailyPrice
+          } else {
+            return minDailyPrice / nights
+          }
+        }
+        return parseFloat(rt.defaultPrice || 0)
+      }).filter(p => p > 0)
+
+      console.log('房型价格:', prices)
+      const minPrice = prices.length > 0 ? Math.min(...prices) : undefined
+      console.log('最低价格:', minPrice)
+
+      return {
+        id: hotel.id,
+        hotelName: hotel.nameZh,
+        hotelNameEn: hotel.nameEn,
+        city: hotel.cityCode,
+        starLevel: hotel.starLevel,
+        status: hotel.status,
+        available: hotel.available,
+        address: hotel.address,
+        facilities: hotel.facilities,
+        tags: hotel.tags,
+        checkInTime: hotel.checkInTime,
+        checkOutTime: hotel.checkOutTime,
+        cancelPolicy: hotel.cancelPolicy,
+        changePolicy: hotel.changePolicy,
+        extraBedPolicy: hotel.extraBedPolicy,
+        createdAt: hotel.createdTime,
+        updatedAt: hotel.updatedTime,
+        coverImage: bannerMap.get(hotel.id) || defaultCoverImage,
+        minPrice
+      }
+    })
   }
 
-  async getRandomRecommendHotels(limit: number = 4): Promise<any[]> {
+  async getRandomRecommendHotels(limit: number = 4, date?: string): Promise<any[]> {
     const hotels = await this.hotelRepository
       .createQueryBuilder('hotel')
       .select([
@@ -408,26 +559,85 @@ export class HotelService {
 
     const defaultCoverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
 
-    return hotels.map(hotel => ({
-      id: hotel.id,
-      hotelName: hotel.nameZh,
-      hotelNameEn: hotel.nameEn,
-      city: hotel.cityCode,
-      starLevel: hotel.starLevel,
-      status: hotel.status,
-      available: hotel.available,
-      address: hotel.address,
-      facilities: hotel.facilities,
-      tags: hotel.tags,
-      checkInTime: hotel.checkInTime,
-      checkOutTime: hotel.checkOutTime,
-      cancelPolicy: hotel.cancelPolicy,
-      changePolicy: hotel.changePolicy,
-      extraBedPolicy: hotel.extraBedPolicy,
-      createdAt: hotel.createdTime,
-      updatedAt: hotel.updatedTime,
-      coverImage: bannerMap.get(hotel.id) || defaultCoverImage
-    }));
+    const { RoomTypeEntity } = await import('../room-type/room-type.entity');
+    const roomTypeRepository = this.dataSource.getRepository(RoomTypeEntity);
+
+    const roomTypes = await roomTypeRepository
+      .createQueryBuilder('rt')
+      .select(['rt.hotelId', 'rt.id', 'rt.name', 'rt.status', 'rt.defaultPrice'])
+      .where('rt.hotelId IN (:...hotelIds)', { hotelIds })
+      .andWhere('rt.status = :status', { status: 'APPROVED' })
+      .getMany();
+
+    console.log('Room types from TypeORM:', roomTypes);
+
+    const roomTypeMap = new Map();
+    roomTypes.forEach(rt => {
+      if (!roomTypeMap.has(rt.hotelId)) {
+        roomTypeMap.set(rt.hotelId, []);
+      }
+      roomTypeMap.get(rt.hotelId)!.push(rt);
+    });
+
+    let dailyPrices: any[] = []
+    if (date) {
+      const { RoomTypePriceDailyEntity } = await import('../room-type-price-daily/room-type-price-daily.entity');
+      const priceRepository = this.dataSource.getRepository(RoomTypePriceDailyEntity);
+
+      dailyPrices = await priceRepository
+        .createQueryBuilder('p')
+        .select(['p.roomTypeId', 'p.price'])
+        .where('p.date = :date', { date })
+        .andWhere('p.roomTypeId IN (:...roomTypeIds)', { roomTypeIds: roomTypes.map(rt => rt.id) })
+        .getMany();
+
+      console.log('Daily prices:', dailyPrices);
+    }
+
+    const priceMap = new Map();
+    dailyPrices.forEach(p => {
+      priceMap.set(p.roomTypeId, p.price);
+    });
+
+    return hotels.map(hotel => {
+      const hotelRoomTypes = roomTypeMap.get(hotel.id) || []
+      const approvedRoomTypes = hotelRoomTypes.filter(rt => rt.status === 'APPROVED')
+      console.log('酒店:', hotel.nameZh, '房型数量:', hotelRoomTypes.length, '已审核房型数量:', approvedRoomTypes.length)
+
+      const prices = approvedRoomTypes.map(rt => {
+        const dailyPrice = priceMap.get(rt.id)
+        if (dailyPrice && dailyPrice > 0) {
+          return parseFloat(dailyPrice)
+        }
+        return parseFloat(rt.defaultPrice || 0)
+      }).filter(p => p > 0)
+
+      console.log('房型价格:', prices)
+      const minPrice = prices.length > 0 ? Math.min(...prices) : undefined
+      console.log('最低价格:', minPrice)
+
+      return {
+        id: hotel.id,
+        hotelName: hotel.nameZh,
+        hotelNameEn: hotel.nameEn,
+        city: hotel.cityCode,
+        starLevel: hotel.starLevel,
+        status: hotel.status,
+        available: hotel.available,
+        address: hotel.address,
+        facilities: hotel.facilities,
+        tags: hotel.tags,
+        checkInTime: hotel.checkInTime,
+        checkOutTime: hotel.checkOutTime,
+        cancelPolicy: hotel.cancelPolicy,
+        changePolicy: hotel.changePolicy,
+        extraBedPolicy: hotel.extraBedPolicy,
+        createdAt: hotel.createdTime,
+        updatedAt: hotel.updatedTime,
+        coverImage: bannerMap.get(hotel.id) || defaultCoverImage,
+        minPrice
+      }
+    })
   }
 
   async getAllTags(): Promise<string[]> {

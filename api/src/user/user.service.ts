@@ -73,9 +73,8 @@ export class UserService {
   }
 
   async findMiniUserByPhone(phone: string): Promise<UserEntity | undefined> {
-    console.log('=== 查询用户 ===')
+    console.log('=== 查询小程序用户 ===')
     console.log('查询手机号:', phone)
-    console.log('查询条件:', { phone, role: 'user' })
     
     const user = await this.userRepository.findOne({ 
       where: { 
@@ -83,16 +82,7 @@ export class UserService {
         role: 'user' 
       } 
     });
-    console.log('查询结果:', user)
-    
-    if (!user) {
-      console.log('未找到用户，尝试只按手机号查询')
-      const userByPhoneOnly = await this.userRepository.findOne({ 
-        where: { phone: phone } 
-      });
-      console.log('只按手机号查询结果:', userByPhoneOnly)
-      console.log('用户角色:', userByPhoneOnly?.role)
-    }
+    console.log('查询结果 (role=user):', user)
     
     return user;
   }

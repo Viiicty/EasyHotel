@@ -106,8 +106,11 @@ export class MiniHotelController {
 
   @Public()
   @Get('list')               //通过hotel表格cityCode查询所有UP的酒店列表
-  async getHotelsByCityCode(@Query('cityCode') cityCode: string): Promise<any[]> {
-    return this.hotelService.getMiniHotelsByCityCode(cityCode);
+  async getHotelsByCityCode(
+    @Query('cityCode') cityCode: string,
+    @Query('date') date?: string
+  ): Promise<any[]> {
+    return this.hotelService.getMiniHotelsByCityCode(cityCode, date);
   }
 
   @Public()
@@ -119,7 +122,9 @@ export class MiniHotelController {
     @Query('starLevel') starLevel?: string,
     @Query('tags') tags?: string,
     @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string
+    @Query('pageSize') pageSize?: string,
+    @Query('checkIn') checkIn?: string,
+    @Query('checkOut') checkOut?: string
   ): Promise<any[]> {
     return this.hotelService.searchMiniHotels({
       cityCode,
@@ -128,7 +133,9 @@ export class MiniHotelController {
       starLevel: starLevel ? parseInt(starLevel) : undefined,
       tags: tags ? JSON.parse(tags) : undefined,
       page: page ? parseInt(page) : 1,
-      pageSize: pageSize ? parseInt(pageSize) : 10
+      pageSize: pageSize ? parseInt(pageSize) : 10,
+      checkIn,
+      checkOut
     });
   }
 
@@ -145,9 +152,10 @@ export class MiniHotelController {
   @Public()
   @Get('recommend')           //随机推荐酒店
   async getRecommendHotels(
-    @Query('limit') limit?: string
+    @Query('limit') limit?: string,
+    @Query('date') date?: string
   ): Promise<any[]> {
-    return this.hotelService.getRandomRecommendHotels(limit ? parseInt(limit) : 4);
+    return this.hotelService.getRandomRecommendHotels(limit ? parseInt(limit) : 4, date);
   }
 
   @Public()

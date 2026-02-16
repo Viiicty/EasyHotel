@@ -1,115 +1,186 @@
 import React, { Component } from 'react'
-import { View, Text, Image, Input, Button, ScrollView } from '@tarojs/components'
+import { View, Text, Input, Button, ScrollView } from '@tarojs/components'
 import Taro, { getCurrentInstance } from '@tarojs/taro'
-import { hotelService, HotelDetail, RoomType } from '../../services/hotel.service'
-import Calendar from '../../components/calendar/calendar'
-import './book.scss'
+import { bookingService } from '../../services/booking.service'
+import { userService } from '../../services/user.service'
+import './index.scss'
 
-interface BookState {
+interface BookingState {
   hotelId: string
   roomTypeId: string
-  hotel: HotelDetail | null
-  roomType: RoomType | null
   checkIn: string
   checkOut: string
-  nights: number
   rooms: number
   adults: number
   children: number
+  hotel: any
+  roomType: any
+  prices: Array<{ date: string; price: number }>
+  totalPrice: number
+  nights: number
+  calculatedRooms: number
   guestName: string
   guestPhone: string
-  showCalendar: boolean
-  calendarType: 'checkIn' | 'checkOut'
+  idCard: string
+  remarks: string
   loading: boolean
+  submitting: boolean
+  holdToken: string
+  expireAt: string
+  countdown: number
 }
 
-export default class BookPage extends Component<{}, BookState> {
-  state: BookState = {
+export default class BookingPage extends Component<{}, BookingState> {
+  countdownTimer: any = null
+
+  state: BookingState = {
     hotelId: '',
     roomTypeId: '',
-    hotel: null,
-    roomType: null,
-    checkIn: '02-10',
-    checkOut: '02-11',
-    nights: 1,
+    checkIn: '',
+    checkOut: '',
     rooms: 1,
     adults: 1,
     children: 0,
+    hotel: null,
+    roomType: null,
+    prices: [],
+    totalPrice: 0,
+    nights: 0,
+    calculatedRooms: 1,
     guestName: '',
     guestPhone: '',
-    showCalendar: false,
-    calendarType: 'checkIn',
-    loading: false
+    idCard: '',
+    remarks: '',
+    loading: true,
+    submitting: false,
+    holdToken: '',
+    expireAt: '',
+    countdown: 0
   }
 
   componentDidShow() {
-    const instance = getCurrentInstance()
-    const { hotelId, roomTypeId, checkIn, checkOut, rooms, adults, children } = instance.router?.params || {}
+    this.loadBookingData()
+  }
 
-    if (hotelId && roomTypeId) {
-      this.setState({ 
-        hotelId, 
-        roomTypeId,
-        checkIn: checkIn || '02-10',
-        checkOut: checkOut || '02-11',
-        rooms: rooms ? parseInt(rooms) : 1,
-        adults: adults ? parseInt(adults) : 1,
-        children: children ? parseInt(children) : 0
-      })
-      this.loadData(hotelId, roomTypeId)
+  componentDidHide() {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer)
     }
   }
 
-  componentDidHide() {}
+  loadBookingData = async () => {
+    const instance = getCurrentInstance()
+    const params = instance.router?.params || {}
 
-  loadData = async (hotelId: string, roomTypeId: string) => {
+    const { hotelId, roomTypeId, checkIn, checkOut, rooms, adults, children } = params
+
+    if (!hotelId || !roomTypeId || !checkIn || !checkOut) {
+      Taro.showToast({
+        title: '参数不完整',
+        icon: 'none'
+      })
+      setTimeout(() => {
+        Taro.navigateBack()
+      }, 1500)
+      return
+    }
+
     try {
       this.setState({ loading: true })
 
-      const hotel = await hotelService.getHotelDetail(hotelId)
-      const roomTypes = await hotelService.getRoomTypesByHotel(hotelId)
-      const roomType = roomTypes.find(rt => rt.id === roomTypeId)
+      console.log('=== 加载预定数据 ===')
+      console.log('参数:', { hotelId, roomTypeId, checkIn, checkOut, rooms, adults, children })
+
+      const result = await bookingService.prepareBooking({
+        hotelId,
+        roomTypeId,
+        checkIn: this.formatDate(checkIn),
+        checkOut: this.formatDate(checkOut),
+        rooms: parseInt(rooms) || 1,
+        adults: parseInt(adults) || 1,
+        children: parseInt(children) || 0
+      })
+
+      console.log('=== 预定数据返回 ===')
+      console.log('酒店信息:', result.hotel)
+      console.log('房型信息:', result.roomType)
+      console.log('价格信息:', result.prices)
+      console.log('总价:', result.totalPrice)
+      console.log('晚数:', result.nights)
+      console.log('计算房间数:', result.calculatedRooms)
+
+      const userInfo = userService.getUserInfo()
+      console.log('=== 用户信息检查 ===')
+      console.log('getUserInfo() 返回:', userInfo)
+      console.log('getToken():', userService.getToken())
+      console.log('getUserId():', userService.getUserId())
+      console.log('isLoggedIn():', userService.isLoggedIn())
 
       this.setState({
-        hotel,
-        roomType,
+        hotelId,
+        roomTypeId,
+        checkIn: this.formatDate(checkIn),
+        checkOut: this.formatDate(checkOut),
+        rooms: parseInt(rooms) || 1,
+        adults: parseInt(adults) || 1,
+        children: parseInt(children) || 0,
+        hotel: result.hotel,
+        roomType: result.roomType,
+        prices: result.prices,
+        totalPrice: result.totalPrice,
+        nights: result.nights,
+        calculatedRooms: result.calculatedRooms,
+        guestName: userInfo?.name || '',
+        guestPhone: userInfo?.phone || '',
+        idCard: userInfo?.idCard || '',
         loading: false
       })
     } catch (error) {
-      console.error('加载数据失败:', error)
+      console.error('加载预定数据失败:', error)
       Taro.showToast({
-        title: '加载数据失败',
+        title: '加载失败',
         icon: 'none'
       })
       this.setState({ loading: false })
     }
   }
 
-  handleCheckInClick = () => {
-    this.setState({ showCalendar: true, calendarType: 'checkIn' })
+  formatDate = (dateStr: string) => {
+    const parts = dateStr.split('-')
+    if (parts.length === 3) {
+      return dateStr
+    }
+    const year = new Date().getFullYear()
+    return `${year}-${parts[0]}-${parts[1]}`
   }
 
-  handleCheckOutClick = () => {
-    this.setState({ showCalendar: true, calendarType: 'checkOut' })
+  formatDateDisplay = (dateStr: string): string => {
+    const parts = dateStr.split('-')
+    if (parts.length === 3) {
+      return `${parseInt(parts[1])}月${parseInt(parts[2])}日`
+    } else if (parts.length >= 2) {
+      return `${parts[0]}月${parts[1]}日`
+    }
+    return dateStr
   }
 
-  handleCalendarConfirm = (startDate: string, endDate: string) => {
-    const startParts = startDate.split('-')
-    const endParts = endDate.split('-')
-    const start = new Date(2026, parseInt(startParts[0]) - 1, parseInt(startParts[1]))
-    const end = new Date(2026, parseInt(endParts[0]) - 1, parseInt(endParts[1]))
-    const nights = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-
-    this.setState({
-      checkIn: startDate,
-      checkOut: endDate,
-      nights,
-      showCalendar: false
-    })
+  formatDateTime = (dateTimeStr: string) => {
+    if (!dateTimeStr) return ''
+    const date = new Date(dateTimeStr)
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `${hours}:${minutes}`
   }
 
-  handleCalendarClose = () => {
-    this.setState({ showCalendar: false })
+  formatWeekday = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+    return weekdays[date.getDay()]
+  }
+
+  handleRoomsChange = (delta: number) => {
+    const newRooms = Math.max(1, this.state.rooms + delta)
+    this.setState({ rooms: newRooms })
   }
 
   handleGuestNameChange = (e) => {
@@ -120,208 +191,273 @@ export default class BookPage extends Component<{}, BookState> {
     this.setState({ guestPhone: e.detail.value })
   }
 
-  handleGuestsChange = (e) => {
-    this.setState({ adults: parseInt(e.detail.value) })
+  handleIdCardChange = (e) => {
+    this.setState({ idCard: e.detail.value })
   }
 
-  handleSubmit = () => {
-    const { hotel, roomType, checkIn, checkOut, adults, children, guestName, guestPhone } = this.state
+  handleRemarksChange = (e) => {
+    this.setState({ remarks: e.detail.value })
+  }
 
-    if (!guestName) {
+  validateForm = () => {
+    const { guestName, guestPhone, idCard } = this.state
+
+    if (!guestName.trim()) {
       Taro.showToast({
         title: '请输入入住人姓名',
         icon: 'none'
       })
-      return
+      return false
     }
 
-    if (!guestPhone) {
+    if (!guestPhone.trim()) {
       Taro.showToast({
         title: '请输入手机号',
         icon: 'none'
       })
-      return
+      return false
     }
 
     if (!/^1[3-9]\d{9}$/.test(guestPhone)) {
       Taro.showToast({
-        title: '请输入正确的手机号',
+        title: '手机号格式不正确',
         icon: 'none'
       })
+      return false
+    }
+
+    if (!idCard.trim()) {
+      Taro.showToast({
+        title: '请输入身份证号',
+        icon: 'none'
+      })
+      return false
+    }
+
+    if (!/^[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$/.test(idCard)) {
+      Taro.showToast({
+        title: '身份证号格式不正确',
+        icon: 'none'
+      })
+      return false
+    }
+
+    return true
+  }
+
+  handleSubmit = async () => {
+    if (!this.validateForm()) {
       return
     }
 
-    Taro.showToast({
-      title: '预订成功',
-      icon: 'success'
-    })
+    try {
+      this.setState({ submitting: true })
 
-    setTimeout(() => {
-      Taro.switchTab({
-        url: '/pages/order/index'
+      const result = await bookingService.submitBooking({
+        hotelId: this.state.hotelId,
+        roomTypeId: this.state.roomTypeId,
+        checkIn: this.state.checkIn,
+        checkOut: this.state.checkOut,
+        rooms: this.state.rooms,
+        nights: this.state.nights,
+        adults: this.state.adults,
+        children: this.state.children,
+        guestName: this.state.guestName,
+        guestPhone: this.state.guestPhone,
+        idCard: this.state.idCard,
+        remarks: this.state.remarks
       })
-    }, 1500)
+
+      this.setState({
+        holdToken: result.holdToken,
+        expireAt: result.expireAt,
+        submitting: false
+      })
+
+      this.startCountdown()
+
+      Taro.showModal({
+        title: '订单已创建',
+        content: '请在15分钟内完成支付',
+        showCancel: false,
+        success: () => {
+          Taro.navigateTo({
+            url: `/pages/order/detail?orderId=${result.orderId}&holdToken=${result.holdToken}`
+          })
+        }
+      })
+    } catch (error) {
+      console.error('提交订单失败:', error)
+      const message = error.message || '提交订单失败'
+      Taro.showToast({
+        title: message,
+        icon: 'none'
+      })
+      this.setState({ submitting: false })
+    }
   }
 
-  renderStars = (starLevel: number) => {
-    const stars = []
-    for (let i = 0; i < starLevel; i++) {
-      stars.push(<Text key={i} className='star'>⭐</Text>)
-    }
-    return stars
+  startCountdown = () => {
+    const expireTime = new Date(this.state.expireAt).getTime()
+    const now = Date.now()
+    const remaining = Math.max(0, Math.floor((expireTime - now) / 1000))
+
+    this.setState({ countdown: remaining })
+
+    this.countdownTimer = setInterval(() => {
+      const currentTime = Date.now()
+      const remainingTime = Math.max(0, Math.floor((expireTime - currentTime) / 1000))
+
+      this.setState({ countdown: remainingTime })
+
+      if (remainingTime <= 0) {
+        clearInterval(this.countdownTimer)
+      }
+    }, 1000)
+  }
+
+  formatCountdown = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${minutes}:${secs.toString().padStart(2, '0')}`
   }
 
   render() {
-    const { hotel, roomType, checkIn, checkOut, nights, rooms, adults, children, guestName, guestPhone, showCalendar, loading } = this.state
+    const {
+      hotel,
+      roomType,
+      checkIn,
+      checkOut,
+      nights,
+      rooms,
+      adults,
+      children,
+      totalPrice,
+      guestName,
+      guestPhone,
+      idCard,
+      remarks,
+      loading,
+      submitting,
+      countdown
+    } = this.state
 
     if (loading) {
       return (
-        <View className='book-page'>
+        <View className='booking-page'>
           <View className='loading'>加载中...</View>
         </View>
       )
     }
 
-    if (!hotel || !roomType) {
-      return (
-        <View className='book-page'>
-          <View className='error'>数据加载失败</View>
-        </View>
-      )
-    }
-
     return (
-      <View className='book-page'>
-        <ScrollView scrollY className='book-container'>
-          <View className='hotel-info-card'>
-            {hotel.coverImage && (
-              <Image className='hotel-cover' src={hotel.coverImage} mode='aspectFill' />
-            )}
-            <View className='hotel-details'>
-              <Text className='hotel-name'>{hotel.hotelName}</Text>
-              <Text className='hotel-name-en'>{hotel.hotelNameEn}</Text>
-              <View className='hotel-stars'>
-                {this.renderStars(hotel.starLevel)}
+      <View className='booking-page'>
+        <ScrollView className='booking-content' scrollY>
+          <View className='hotel-info'>
+            <Text className='hotel-name'>{hotel?.nameZh || ''}</Text>
+            <View className='date-range'>
+              <Text className='date-text'>
+                {this.formatDateDisplay(checkIn)}周{this.formatWeekday(checkIn)}-{this.formatDateDisplay(checkOut)}周{this.formatWeekday(checkOut)} | {nights}晚
+              </Text>
+            </View>
+            <View className='time-info'>
+              <Text className='time-text'>
+                {this.formatDateTime(hotel?.checkInTime)}后入住；{this.formatDateTime(hotel?.checkOutTime)}前退房
+              </Text>
+            </View>
+            <View className='room-detail'>
+                <Text className='room-name'>{roomType?.name || ''}</Text>
+                <View className='room-info'>
+                  <Text className='room-info-item'>{roomType?.bedType || ''}</Text>
+                  <Text className='room-info-separator'>|</Text>
+                  <Text className='room-info-item'>
+                    {roomType?.areaSqm !== undefined && roomType?.areaSqm !== null 
+                      ? parseFloat(roomType.areaSqm).toFixed(1) 
+                      : ''}㎡
+                  </Text>
+                  <Text className='room-info-separator'>|</Text>
+                  <Text className='room-info-item'>
+                    {roomType?.breakfast === 'yes' ? '🍳 含双早' : roomType?.breakfast === 'no' ? '❌ 无早餐' : roomType?.breakfast || ''}
+                  </Text>
+                </View>
               </View>
-              <Text className='hotel-address'>📍 {hotel.address}</Text>
+            <View className='policy-info'>
+              <Text className='policy-text'>
+                取消政策：{hotel?.cancelPolicy || ''} | 修改政策：{hotel?.changePolicy || ''}
+              </Text>
             </View>
           </View>
 
-          <View className='room-info-card'>
-            <Text className='card-title'>房型信息</Text>
-            <View className='room-details'>
-              <View className='room-name'>{roomType.name}</View>
-              {roomType.bedType && (
-                <View className='room-detail-item'>
-                  <Text className='detail-icon'>🛏️</Text>
-                  <Text className='detail-text'>{roomType.bedType}</Text>
-                </View>
-              )}
-              {roomType.areaSqm && (
-                <View className='room-detail-item'>
-                  <Text className='detail-icon'>📐</Text>
-                  <Text className='detail-text'>{roomType.areaSqm}㎡</Text>
-                </View>
-              )}
-              {roomType.maxGuests && (
-                <View className='room-detail-item'>
-                  <Text className='detail-icon'>👥</Text>
-                  <Text className='detail-text'>最多{roomType.maxGuests}人入住</Text>
-                </View>
-              )}
-              {roomType.breakfast && (
-                <View className='room-detail-item'>
-                  <Text className='detail-icon'>🍳</Text>
-                  <Text className='detail-text'>{roomType.breakfast}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-
-          <View className='date-info-card'>
-            <Text className='card-title'>入住日期</Text>
-            <View className='date-selection'>
-              <View className='date-item' onClick={this.handleCheckInClick}>
-                <Text className='date-label'>入住</Text>
-                <Text className='date-value'>{checkIn}</Text>
-              </View>
-              <Text className='date-separator'>-</Text>
-              <View className='date-item' onClick={this.handleCheckOutClick}>
-                <Text className='date-label'>离店</Text>
-                <Text className='date-value'>{checkOut}</Text>
+          <View className='booking-info'>
+            <Text className='section-title'>订房信息</Text>
+            <View className='rooms-control'>
+              <Text className='rooms-label'>房间数量</Text>
+              <View className='rooms-adjust'>
+                <Text className='adjust-btn' onClick={() => this.handleRoomsChange(-1)}>-</Text>
+                <Text className='rooms-value'>{rooms}</Text>
+                <Text className='adjust-btn' onClick={() => this.handleRoomsChange(1)}>+</Text>
               </View>
             </View>
-            <View className='nights-info'>
-              <Text className='nights-text'>共 {nights} 晚</Text>
-            </View>
-          </View>
-
-          <View className='guest-info-card'>
-            <Text className='card-title'>入住人信息</Text>
             <View className='form-item'>
-              <Text className='form-label'>房间数</Text>
+              <Text className='form-label'>
+                住客姓名<Text className='required'>*</Text>
+              </Text>
               <Input
                 className='form-input'
-                type='number'
-                value={rooms}
-                disabled
-              />
-            </View>
-            <View className='form-item'>
-              <Text className='form-label'>成人数</Text>
-              <Input
-                className='form-input'
-                type='number'
-                value={adults}
-                onInput={this.handleGuestsChange}
-              />
-            </View>
-            <View className='form-item'>
-              <Text className='form-label'>儿童数</Text>
-              <Input
-                className='form-input'
-                type='number'
-                value={children}
-                onInput={(e) => this.setState({ children: parseInt(e.detail.value) })}
-              />
-            </View>
-            <View className='form-item'>
-              <Text className='form-label'>入住人姓名</Text>
-              <Input
-                className='form-input'
-                placeholder='请输入姓名'
+                placeholder='请输入住客姓名'
                 value={guestName}
                 onInput={this.handleGuestNameChange}
               />
             </View>
             <View className='form-item'>
-              <Text className='form-label'>手机号</Text>
+              <Text className='form-label'>
+                联系手机<Text className='required'>*</Text>
+              </Text>
               <Input
                 className='form-input'
-                type='number'
                 placeholder='请输入手机号'
+                type='number'
+                maxlength={11}
                 value={guestPhone}
                 onInput={this.handleGuestPhoneChange}
               />
             </View>
+            <View className='form-item'>
+              <Text className='form-label'>
+                身份证号<Text className='required'>*</Text>
+              </Text>
+              <Input
+                className='form-input'
+                placeholder='请输入身份证号'
+                maxlength={18}
+                value={idCard}
+                onInput={this.handleIdCardChange}
+              />
+            </View>
           </View>
+
+          {countdown > 0 && (
+            <View className='countdown-info'>
+              <Text className='countdown-text'>
+                请在 {this.formatCountdown(countdown)} 内完成支付
+              </Text>
+            </View>
+          )}
         </ScrollView>
 
-        <View className='book-footer'>
-          <View className='price-info'>
-            <Text className='price-label'>总价</Text>
-            <Text className='price-value'>¥{nights * 500}</Text>
+        <View className='booking-footer'>
+          <View className='footer-price'>
+            <Text className='price-label'>支付总价</Text>
+            <Text className='price-value'>¥{totalPrice}</Text>
           </View>
-          <Button className='submit-btn' onClick={this.handleSubmit}>确认预订</Button>
+          <Button
+            className='submit-button'
+            onClick={this.handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? '提交中...' : '立即支付'}
+          </Button>
         </View>
-
-        <Calendar
-          visible={showCalendar}
-          startDate={checkIn}
-          endDate={checkOut}
-          onConfirm={this.handleCalendarConfirm}
-          onClose={this.handleCalendarClose}
-        />
       </View>
     )
   }

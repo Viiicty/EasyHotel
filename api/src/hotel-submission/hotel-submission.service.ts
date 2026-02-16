@@ -46,10 +46,6 @@ export class HotelSubmissionService {
     return this.hotelSubmissionRepository.findOneBy({ roomtypeId });
   }
 
-  async findByRoomPriceCalendarId(roompricecalendarId: string): Promise<HotelSubmissionEntity> {
-    return this.hotelSubmissionRepository.findOneBy({ roompricecalendarId });
-  }
-
   async findByStatus(status: string): Promise<HotelSubmissionEntity[]> {
     return this.hotelSubmissionRepository.find({ where: { status } });
   }

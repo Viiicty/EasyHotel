@@ -7,10 +7,10 @@ import { JwtAuthGuard } from './common/jwt-auth.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { RoomTypeModule } from './room-type/room-type.module';
 import { HotelSubmissionModule } from './hotel-submission/hotel-submission.module';
-import { RoomPriceCalendarModule } from './room-price-calendar/room-price-calendar.module';
-import { RoomRatePlanModule } from './room-rate-plan/room-rate-plan.module';
+import { RoomTypePriceDailyModule } from './room-type-price-daily/room-type-price-daily.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { UploadModule } from './upload/upload.module';
+import { BookingModule } from './booking/booking.module';
 
 @Module({
   imports: [
@@ -29,10 +29,10 @@ import { UploadModule } from './upload/upload.module';
     HotelModule,
     RoomTypeModule,
     HotelSubmissionModule,
-    RoomPriceCalendarModule,
-    RoomRatePlanModule,
+    RoomTypePriceDailyModule,
     InventoryModule,
     UploadModule,
+    BookingModule,
   ],
   providers: [
     {

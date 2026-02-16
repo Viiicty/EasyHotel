@@ -60,14 +60,22 @@ export class UserController {
     @Body('email') email?: string,
   ) {
     const user = await this.userService.createMiniUser(phone, password, name, email);
-    const result = { ...user };
+    const token = await this.authService.login(user);
+    const result = { ...user, ...token };
     delete result.passwordHash;
     return result;
   }
 
   @Public()
-  @Get('mini/phone/:phone')
-  async getMiniUserByPhone(@Param('phone') phone: string) {
-    return this.userService.findMiniUserByPhone(phone);
+  @Post('mini/login')
+  async miniLogin(@Body('phone') phone: string) {
+    const user = await this.userService.findMiniUserByPhone(phone);
+    if (!user) {
+      return null;
+    }
+    const token = await this.authService.login(user);
+    const result = { ...user, ...token };
+    delete result.passwordHash;
+    return result;
   }
 }

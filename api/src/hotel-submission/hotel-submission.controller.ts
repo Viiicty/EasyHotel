@@ -49,11 +49,6 @@ export class HotelSubmissionController {
     return this.hotelSubmissionService.findByRoomTypeId(roomtypeId);
   }
 
-  @Get('roompricecalendar/:roompricecalendarId')
-  async findByRoomPriceCalendarId(@Param('roompricecalendarId') roompricecalendarId: string): Promise<HotelSubmissionEntity> {
-    return this.hotelSubmissionService.findByRoomPriceCalendarId(roompricecalendarId);
-  }
-
   @Get('merchant/:merchantId')
   async findByMerchantId(@Param('merchantId') merchantId: string): Promise<HotelSubmissionEntity[]> {
     return this.hotelSubmissionService.findByMerchantId(merchantId);

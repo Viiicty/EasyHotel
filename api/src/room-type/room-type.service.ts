@@ -92,50 +92,64 @@ export class RoomTypeService {
     }
 
   async getRoomTypesByMerchant(userId: string, hotelId: string) {
-    const result = await this.dataSource.query(`
-      SELECT 
-        rt.id as "roomTypeId",
-        rt.room_type_name as "roomTypeName",
-        rt.status as "roomTypeStatus",
-        h.status as "hotelStatus",
-        rp.id as "ratePlanId",
-        rp.plan_name as "planName",
-        rp.base_price as "basePrice",
-        rp.currency as "currency",
-        rp.status as "ratePlanStatus"
-      FROM room_type rt
-      JOIN hotel h ON h.id = rt.hotel_id
-      LEFT JOIN room_rate_plan rp ON rp.room_type_id = rt.id
-      WHERE rt.hotel_id = $1
-        AND h.status = 'APPROVED'
-        AND rt.status = 'APPROVED'
-        AND h.merchant_id = $2
-      ORDER BY rt.id, rp.id
-    `, [hotelId, userId]);
+    const roomTypes = await this.roomTypeRepository
+      .createQueryBuilder('rt')
+      .leftJoinAndSelect('rt.hotel', 'h')
+      .where('rt.hotelId = :hotelId', { hotelId })
+      .andWhere('h.status = :hotelStatus', { hotelStatus: 'APPROVED' })
+      .andWhere('rt.status = :status', { status: 'APPROVED' })
+      .andWhere('h.merchantId = :userId', { userId })
+      .orderBy('rt.id', 'ASC')
+      .getMany();
 
-    const roomTypesMap = new Map();
+    return roomTypes.map(rt => ({
+      id: rt.id,
+      name: rt.name,
+      bedType: rt.bedType,
+      breakfast: rt.breakfast,
+      areaSqm: rt.areaSqm,
+      maxGuests: rt.maxGuests,
+      status: rt.status,
+      hotelStatus: rt.hotel?.status,
+      defaultPrice: rt.defaultPrice || 0,
+      defaultInventory: rt.defaultInventory || 0
+    }));
+  }
 
-    for (const row of result) {
-      if (!roomTypesMap.has(row.roomTypeId)) {
-        roomTypesMap.set(row.roomTypeId, {
-          roomTypeId: row.roomTypeId,
-          roomTypeName: row.roomTypeName,
-          ratePlans: []
-        });
-      }
+  async updateDefaultPrice(userId: string, roomTypeId: string, defaultPrice: number) {
+    const roomType = await this.roomTypeRepository.findOne({
+      where: { id: roomTypeId },
+      relations: ['hotel']
+    });
 
-      if (row.ratePlanId) {
-        const roomType = roomTypesMap.get(row.roomTypeId);
-        roomType.ratePlans.push({
-          ratePlanId: row.ratePlanId,
-          planName: row.planName,
-          basePrice: row.basePrice,
-          currency: row.currency
-        });
-      }
+    if (!roomType) {
+      throw new Error('房型不存在');
     }
 
-    return Array.from(roomTypesMap.values());
+    if (roomType.hotel?.merchantId !== userId) {
+      throw new Error('无权操作该房型');
+    }
+
+    roomType.defaultPrice = defaultPrice;
+    return this.roomTypeRepository.save(roomType);
+  }
+
+  async updateDefaultInventory(userId: string, roomTypeId: string, defaultInventory: number) {
+    const roomType = await this.roomTypeRepository.findOne({
+      where: { id: roomTypeId },
+      relations: ['hotel']
+    });
+
+    if (!roomType) {
+      throw new Error('房型不存在');
+    }
+
+    if (roomType.hotel?.merchantId !== userId) {
+      throw new Error('无权操作该房型');
+    }
+
+    roomType.defaultInventory = defaultInventory;
+    return this.roomTypeRepository.save(roomType);
   }
 
   /************************小程序*****************************/

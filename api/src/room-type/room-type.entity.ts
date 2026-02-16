@@ -26,6 +26,12 @@ export class RoomTypeEntity extends BaseEntity {
   @Column({ type: 'int', nullable: true, comment: '最多可入住人数' })
   maxGuests?: number;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, default: 0, comment: '默认价格（元）' })
+  defaultPrice?: number;
+
+  @Column({ type: 'int', nullable: true, default: 0, comment: '默认库存量' })
+  defaultInventory?: number;
+
   @Column({ type: 'varchar',nullable: true, comment: '审核状态' })
   status: string;
 }

@@ -1,6 +1,7 @@
-import { Column, Entity, ManyToOne, JoinColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { BaseEntity } from '../common/base.entity';
 import { UserEntity } from '../user/user.entity';
+import { RoomTypeEntity } from '../room-type/room-type.entity';
 
 
 @Entity('hotel')
@@ -11,6 +12,9 @@ export class HotelEntity extends BaseEntity {
 
   @Column({ type: 'varchar', nullable: true, name: 'merchant_id', comment: 'user_id' })
   merchantId?: string;
+
+  @OneToMany(() => RoomTypeEntity, roomType => roomType.hotel)
+  roomTypes?: RoomTypeEntity[];
 
   @Column({ type: 'varchar', length: 255, comment: '酒店中文名' })
   nameZh: string;

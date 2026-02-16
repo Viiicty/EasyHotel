@@ -1,10 +1,20 @@
-import { Column, Entity, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Column, Entity, ManyToOne, JoinColumn, Index, Unique } from 'typeorm';
 import { BaseEntity } from '../common/base.entity';
+import { HotelEntity } from '../hotel/hotel.entity';
 import { RoomTypeEntity } from '../room-type/room-type.entity';
 
 @Entity('room_type_inventory_daily')
-@Index(['roomTypeId', 'd'])
+@Index(['hotelId', 'date'])
+@Index(['roomTypeId', 'date'])
+@Unique(['hotelId', 'roomTypeId', 'date'])
 export class RoomTypeInventoryDailyEntity extends BaseEntity {
+  @ManyToOne(() => HotelEntity)
+  @JoinColumn({ name: 'hotel_id' })
+  hotel?: HotelEntity;
+
+  @Column({ type: 'uuid', nullable: false, name: 'hotel_id', comment: '酒店ID' })
+  hotelId?: string;
+
   @ManyToOne(() => RoomTypeEntity)
   @JoinColumn({ name: 'room_type_id' })
   roomType?: RoomTypeEntity;
@@ -12,18 +22,15 @@ export class RoomTypeInventoryDailyEntity extends BaseEntity {
   @Column({ type: 'uuid', nullable: true, name: 'room_type_id', comment: '房型ID' })
   roomTypeId?: string;
 
-  @Column({ type: 'date', nullable: true, comment: '日期' })
-  d?: Date;
+  @Column({ type: 'date', nullable: false, comment: '日期' })
+  date?: Date;
 
-  @Column({ type: 'int', nullable: true, comment: '总库存量' })
+  @Column({ type: 'int', nullable: false, name: 'total_qty', comment: '总库存量' })
   totalQty?: number;
 
-  @Column({ type: 'int', nullable: true, default: 0, comment: '已使用量' })
+  @Column({ type: 'int', nullable: false, default: 0, name: 'used_qty', comment: '已使用量（已确认订单）' })
   usedQty?: number;
 
-  @Column({ type: 'int', nullable: true, default: 0, comment: '锁定量' })
+  @Column({ type: 'int', nullable: false, default: 0, name: 'hold_qty', comment: '锁定量（待确认订单）' })
   holdQty?: number;
-
-  @Column({ type: 'timestamp', nullable: true, comment: '更新时间' })
-  updatedAt?: Date;
 }

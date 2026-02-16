@@ -20,4 +20,7 @@ export class UserEntity extends BaseEntity {
 
   @Column({ type: 'varchar', length: 32, nullable: true, comment: '状态（active/disabled）' })
   status?: string;
+
+  @Column({ type: 'varchar', length: 18, nullable: true, comment: '身份证号' })
+  idCard?: string;
 }

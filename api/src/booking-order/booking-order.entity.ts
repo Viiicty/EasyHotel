@@ -3,7 +3,6 @@ import { BaseEntity } from '../common/base.entity';
 import { UserEntity } from '../user/user.entity';
 import { HotelEntity } from '../hotel/hotel.entity';
 import { RoomTypeEntity } from '../room-type/room-type.entity';
-import { RoomRatePlanEntity } from '../room-rate-plan/room-rate-plan.entity';
 
 @Entity('booking_order')
 export class BookingOrderEntity extends BaseEntity {
@@ -28,9 +27,8 @@ export class BookingOrderEntity extends BaseEntity {
   @JoinColumn({ name: 'room_type_id' })
   roomType?: RoomTypeEntity;
 
-  @ManyToOne(() => RoomRatePlanEntity)
-  @JoinColumn({ name: 'rate_plan_id' })
-  ratePlan?: RoomRatePlanEntity;
+  @Column({ type: 'varchar', nullable: true, name: 'room_type_id', comment: 'room_type_id' })
+  roomTypeId?: string;
 
   @Column({ type: 'timestamp', nullable: true, comment: '入住日期' })
   checkinDate?: Date;
@@ -49,6 +47,9 @@ export class BookingOrderEntity extends BaseEntity {
 
   @Column({ type: 'varchar', length: 255, nullable: true, comment: '入住人手机号' })
   guestPhone?: string;
+
+  @Column({ type: 'varchar', length: 18, nullable: true, comment: '入住人身份证号' })
+  idCard?: string;
 
   @Column({ type: 'decimal', precision: 24, scale: 6, nullable: true, comment: '总价' })
   totalAmount?: number;

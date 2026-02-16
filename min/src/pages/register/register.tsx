@@ -62,7 +62,10 @@ export default class RegisterPage extends Component<{}, RegisterState> {
   handleSendCode = () => {
     const { phone, countdown } = this.state
 
+    console.log('handleSendCode 被调用', { phone, countdown })
+
     if (!phone) {
+      console.log('手机号为空')
       Taro.showToast({
         title: '请输入手机号',
         icon: 'none'
@@ -71,6 +74,7 @@ export default class RegisterPage extends Component<{}, RegisterState> {
     }
 
     if (!/^1[3-9]\d{9}$/.test(phone)) {
+      console.log('手机号格式不正确', phone)
       Taro.showToast({
         title: '请输入正确的手机号',
         icon: 'none'
@@ -78,11 +82,16 @@ export default class RegisterPage extends Component<{}, RegisterState> {
       return
     }
 
-    if (countdown > 0) return
+    if (countdown > 0) {
+      console.log('倒计时中，不能重复发送')
+      return
+    }
 
+    console.log('开始发送验证码')
     this.setState({ sending: true })
 
     setTimeout(() => {
+      console.log('发送验证码成功')
       this.setState({ countdown: 60, sending: false })
       this.startCountdown()
       Taro.showToast({
@@ -206,7 +215,7 @@ export default class RegisterPage extends Component<{}, RegisterState> {
 
         userService.setUserInfo({
           id: res.data.id,
-          token: res.data.token
+          token: res.data.access_token
         })
 
         setTimeout(() => {
@@ -276,6 +285,9 @@ export default class RegisterPage extends Component<{}, RegisterState> {
                 placeholder='请输入邮箱'
                 value={email}
                 onInput={this.handleEmailChange}
+                adjust-position
+                cursor-spacing={20}
+                confirm-type='next'
               />
             </View>
 
@@ -296,6 +308,9 @@ export default class RegisterPage extends Component<{}, RegisterState> {
                 placeholder='请输入密码（至少6位）'
                 value={password}
                 onInput={this.handlePasswordChange}
+                adjust-position
+                cursor-spacing={20}
+                confirm-type='next'
               />
             </View>
 
@@ -306,6 +321,9 @@ export default class RegisterPage extends Component<{}, RegisterState> {
                 placeholder='请确认密码'
                 value={confirmPassword}
                 onInput={this.handleConfirmPasswordChange}
+                adjust-position
+                cursor-spacing={20}
+                confirm-type='done'
               />
             </View>
 

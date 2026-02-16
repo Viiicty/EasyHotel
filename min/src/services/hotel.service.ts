@@ -34,6 +34,7 @@ export interface Hotel {
   address?: string
   facilities?: string[]
   tags?: string[]
+  minPrice?: number
 }
 
 export interface HotelDetail {
@@ -129,6 +130,8 @@ export const hotelService = {
     tags?: string[]
     page?: number
     pageSize?: number
+    checkIn?: string
+    checkOut?: string
   }): Promise<Hotel[]> {
     try {
       const queryParams: any = {}
@@ -149,6 +152,12 @@ export const hotelService = {
       }
       if (params.pageSize) {
         queryParams.pageSize = params.pageSize
+      }
+      if (params.checkIn) {
+        queryParams.checkIn = params.checkIn
+      }
+      if (params.checkOut) {
+        queryParams.checkOut = params.checkOut
       }
 
       const res = await request({
@@ -203,12 +212,12 @@ export const hotelService = {
     }
   },
 
-  async getRecommendHotels(limit: number = 4): Promise<Hotel[]> {
+  async getRecommendHotels(limit: number = 4, date?: string): Promise<Hotel[]> {
     try {
       const res = await request({
         url: `${BASE_URL}/mini/hotel/recommend`,
         method: 'GET',
-        data: { limit }
+        data: { limit, date }
       })
       return res.data.data || []
     } catch (error) {

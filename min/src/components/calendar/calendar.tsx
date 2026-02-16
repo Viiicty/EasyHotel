@@ -52,13 +52,23 @@ export default class Calendar extends Component<CalendarProps, CalendarState> {
     let selectedEndDate: Date | undefined
 
     if (startDate) {
-      const [month, day] = startDate.split('-')
-      selectedStartDate = new Date(new Date().getFullYear(), parseInt(month) - 1, parseInt(day))
+      if (startDate.includes('-') && startDate.split('-').length === 3) {
+        const [year, month, day] = startDate.split('-')
+        selectedStartDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      } else {
+        const [month, day] = startDate.split('-')
+        selectedStartDate = new Date(new Date().getFullYear(), parseInt(month) - 1, parseInt(day))
+      }
     }
 
     if (endDate) {
-      const [month, day] = endDate.split('-')
-      selectedEndDate = new Date(new Date().getFullYear(), parseInt(month) - 1, parseInt(day))
+      if (endDate.includes('-') && endDate.split('-').length === 3) {
+        const [year, month, day] = endDate.split('-')
+        selectedEndDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      } else {
+        const [month, day] = endDate.split('-')
+        selectedEndDate = new Date(new Date().getFullYear(), parseInt(month) - 1, parseInt(day))
+      }
     }
 
     this.setState({ selectedStartDate, selectedEndDate }, this.generateMonths)
@@ -179,8 +189,8 @@ export default class Calendar extends Component<CalendarProps, CalendarState> {
   handleConfirm = () => {
     const { selectedStartDate, selectedEndDate } = this.state
     if (selectedStartDate && selectedEndDate) {
-      const startDate = `${selectedStartDate.getMonth() + 1}-${selectedStartDate.getDate()}`
-      const endDate = `${selectedEndDate.getMonth() + 1}-${selectedEndDate.getDate()}`
+      const startDate = `${selectedStartDate.getFullYear()}-${String(selectedStartDate.getMonth() + 1).padStart(2, '0')}-${String(selectedStartDate.getDate()).padStart(2, '0')}`
+      const endDate = `${selectedEndDate.getFullYear()}-${String(selectedEndDate.getMonth() + 1).padStart(2, '0')}-${String(selectedEndDate.getDate()).padStart(2, '0')}`
       this.props.onConfirm(startDate, endDate)
     }
   }

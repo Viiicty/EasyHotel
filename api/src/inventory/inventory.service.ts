@@ -2,11 +2,10 @@ import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, Repository, In } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { RoomRatePlanEntity } from '../room-rate-plan/room-rate-plan.entity';
-import { RoomRatePlanDailyEntity } from '../room-rate-plan/room-rate-plan-daily.entity';
 import { RoomTypeInventoryDailyEntity } from './room-type-inventory-daily.entity';
 import { InventoryHoldEntity } from './inventory-hold.entity';
 import { BookingOrderEntity } from '../booking-order/booking-order.entity';
+import { RoomTypeEntity } from '../room-type/room-type.entity';
 
 @Injectable()
 export class InventoryService {
@@ -21,14 +20,6 @@ export class InventoryService {
 
   private getHoldRepo(): Repository<InventoryHoldEntity> {
     return this.dataSource.getRepository(InventoryHoldEntity);
-  }
-
-  private getRatePlanRepo(): Repository<RoomRatePlanEntity> {
-    return this.dataSource.getRepository(RoomRatePlanEntity);
-  }
-
-  private getRatePlanDailyRepo(): Repository<RoomRatePlanDailyEntity> {
-    return this.dataSource.getRepository(RoomRatePlanDailyEntity);
   }
 
   private getBookingOrderRepo(): Repository<BookingOrderEntity> {
@@ -86,7 +77,7 @@ export class InventoryService {
           (i.total_qty - i.used_qty - i.hold_qty) AS "remainQty"
         FROM dates
         JOIN room_type_inventory_daily i 
-          ON i.room_type_id = $2 AND i.d = dates.d
+          ON i.room_type_id = $2 AND i.date = dates.d
         JOIN room_type rt ON rt.id = i.room_type_id
         JOIN hotel h ON h.id = rt.hotel_id
         WHERE rt.id = $2
@@ -103,7 +94,7 @@ export class InventoryService {
         SELECT MIN(i.total_qty - i.used_qty - i.hold_qty) as min_remain_qty
         FROM dates
         JOIN room_type_inventory_daily i 
-          ON i.room_type_id = $2 AND i.d = dates.d
+          ON i.room_type_id = $2 AND i.date = dates.d
         JOIN room_type rt ON rt.id = i.room_type_id
         JOIN hotel h ON h.id = rt.hotel_id
         WHERE rt.id = $2
@@ -144,13 +135,13 @@ export class InventoryService {
         ),
         upd AS (
           UPDATE room_type_inventory_daily i
-          SET hold_qty = hold_qty + $4,
+          SET hold_qty = holdQty + $4,
               updated_at = now()
           FROM dates
           WHERE i.room_type_id = $1
-            AND i.d = dates.d
-            AND (i.total_qty - i.used_qty - i.hold_qty) >= $4
-          RETURNING i.d
+            AND i.date = dates.d
+            AND (i.total_qty - i.used_qty - i.holdQty) >= $4
+          RETURNING i.date
         )
         SELECT 
           (SELECT COUNT(*) FROM dates) AS need_days,
@@ -226,14 +217,14 @@ export class InventoryService {
         ),
         upd AS (
           UPDATE room_type_inventory_daily i
-          SET hold_qty = hold_qty - $4,
-              used_qty = used_qty + $4,
+          SET hold_qty = holdQty - $4,
+              used_qty = usedQty + $4,
               updated_at = now()
           FROM dates
           WHERE i.room_type_id = $1
-            AND i.d = dates.d
-            AND i.hold_qty >= $4
-          RETURNING i.d
+            AND i.date = dates.d
+            AND i.holdQty >= $4
+          RETURNING i.date
         )
         SELECT 
           (SELECT COUNT(*) FROM dates) AS need_days,
@@ -295,11 +286,11 @@ export class InventoryService {
             SELECT generate_series($2::date, ($3::date - interval '1 day')::date, interval '1 day')::date AS d
           )
           UPDATE room_type_inventory_daily i
-          SET hold_qty = hold_qty - $1,
+          SET hold_qty = holdQty - $1,
               updated_at = now()
           FROM dates
           WHERE i.room_type_id = $2
-            AND i.d = dates.d
+            AND i.date = dates.d
         `, [hold.qty, hold.roomTypeId, hold.checkIn, hold.checkOut]);
       }
 
@@ -332,28 +323,40 @@ export class InventoryService {
 
       const inventoryRepo = queryRunner.manager.getRepository(RoomTypeInventoryDailyEntity);
 
-      const result = await queryRunner.manager.query(`
-        INSERT INTO room_type_inventory_daily (id, room_type_id, d, total_qty, used_qty, hold_qty, updated_at, created_at)
-        SELECT 
-          gen_random_uuid() as id,
-          $1::uuid as room_type_id,
-          d::date as d,
-          $2::int as total_qty,
-          0 as used_qty,
-          0 as hold_qty,
-          now() as updated_at,
-          now() as created_at
-        FROM generate_series($3::date, ($4::date - interval '1 day')::date, interval '1 day')::date as d(d)
-        ON CONFLICT (room_type_id, d) 
-        DO UPDATE SET 
-          total_qty = EXCLUDED.total_qty,
-          updated_at = now()
-        RETURNING room_type_id, d, total_qty
-      `, [roomTypeId, totalQty, from, to]);
+      const dates = this.getDatesInRange(from, to);
+      const roomType = await queryRunner.manager
+        .getRepository(RoomTypeEntity)
+        .createQueryBuilder('rt')
+        .select('rt.hotelId', 'hotelId')
+        .where('rt.id = :roomTypeId', { roomTypeId })
+        .getRawOne();
+
+      const hotelId = roomType?.hotelId;
+
+      for (const date of dates) {
+        const existingInventory = await inventoryRepo.findOne({
+          where: { hotelId, roomTypeId, date }
+        });
+
+        if (existingInventory) {
+          existingInventory.totalQty = totalQty;
+          await inventoryRepo.save(existingInventory);
+        } else {
+          const newInventory = inventoryRepo.create({
+            hotelId,
+            roomTypeId,
+            date,
+            totalQty,
+            usedQty: 0,
+            holdQty: 0
+          });
+          await inventoryRepo.save(newInventory);
+        }
+      }
 
       await queryRunner.commitTransaction();
       return {
-        initializedCount: result.length,
+        initializedCount: dates.length,
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -364,56 +367,102 @@ export class InventoryService {
   }
 
   async getDailyInventory(userId: string, roomTypeIds: string[], from: Date, to: Date) {
-    const result = await this.dataSource.query(`
-      WITH dates AS (
-        SELECT generate_series($2::date, ($3::date - interval '1 day')::date, interval '1 day')::date AS d
-      )
-      SELECT 
-        dates.d AS date,
-        i.room_type_id AS "roomTypeId",
-        i.total_qty AS "totalQty",
-        i.used_qty AS "usedQty",
-        i.hold_qty AS "holdQty",
-        (i.total_qty - i.used_qty - i.hold_qty) AS "remainQty"
-      FROM dates
-      JOIN room_type_inventory_daily i 
-        ON i.d = dates.d
-      JOIN room_type rt ON rt.id = i.room_type_id
-      JOIN hotel h ON h.id = rt.hotel_id
-      WHERE i.room_type_id = ANY($1)
-        AND i.d >= $2
-        AND i.d < $3
-        AND h.status = 'APPROVED'
-        AND rt.status = 'APPROVED'
-        AND h.merchant_id = $4
-      ORDER BY i.room_type_id, dates.d
-    `, [roomTypeIds, from, to, userId]);
+    const inventory = await this.getInventoryRepo()
+      .createQueryBuilder('i')
+      .leftJoinAndSelect('i.roomType', 'rt')
+      .leftJoinAndSelect('rt.hotel', 'h')
+      .where('i.roomTypeId IN (:...roomTypeIds)', { roomTypeIds })
+      .andWhere('i.date BETWEEN :from AND :to', { from, to })
+      .andWhere('h.status = :hotelStatus', { hotelStatus: 'APPROVED' })
+      .andWhere('rt.status = :status', { status: 'APPROVED' })
+      .andWhere('h.merchantId = :userId', { userId })
+      .orderBy('i.roomTypeId', 'ASC')
+      .addOrderBy('i.date', 'ASC')
+      .getMany();
 
-    return result;
+    const roomTypes = await this.dataSource.getRepository(RoomTypeEntity)
+      .createQueryBuilder('rt')
+      .where('rt.id IN (:...roomTypeIds)', { roomTypeIds })
+      .getMany();
+
+    const roomTypeMap = new Map(roomTypes.map(rt => [rt.id, rt]));
+    const inventoryMap = new Map<string, any>();
+
+    const dates = this.getDatesInRange(from, to);
+    dates.forEach(date => {
+      roomTypes.forEach(roomType => {
+        const key = `${roomType.id}_${date.toISOString().split('T')[0]}`;
+        const existingInv = inventory.find(i => {
+          const invDate = i.date instanceof Date ? i.date : new Date(i.date);
+          return i.roomTypeId === roomType.id && 
+            invDate.toISOString().split('T')[0] === date.toISOString().split('T')[0];
+        });
+
+        const totalQty = existingInv ? Number(existingInv.totalQty) : null;
+        const usedQty = existingInv ? Number(existingInv.usedQty) : null;
+        const holdQty = existingInv ? Number(existingInv.holdQty) : 0;
+
+        inventoryMap.set(key, {
+          date: date,
+          roomTypeId: roomType.id,
+          totalQty: totalQty,
+          usedQty: usedQty,
+          holdQty: holdQty,
+          remainQty: totalQty !== null ? totalQty - usedQty - holdQty : null,
+          isDefault: !existingInv
+        });
+      });
+    });
+
+    return Array.from(inventoryMap.values());
+  }
+
+  private getDatesInRange(startDate: Date, endDate: Date): Date[] {
+    const dates: Date[] = [];
+    const current = new Date(startDate);
+    
+    while (current <= endDate) {
+      dates.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return dates;
   }
 
   async updateDailyInventory(userId: string, roomTypeId: string, date: Date, totalQty: number) {
     await this.assertRoomTypeOperable(userId, roomTypeId);
 
-    const result = await this.dataSource.query(`
-      INSERT INTO room_type_inventory_daily (id, room_type_id, d, total_qty, used_qty, hold_qty, updated_at, created_at)
-      VALUES (
-        gen_random_uuid(),
-        $1::uuid,
-        $2::date,
-        $3::int,
-        0,
-        0,
-        now(),
-        now()
-      )
-      ON CONFLICT (room_type_id, d) 
-      DO UPDATE SET 
-        total_qty = EXCLUDED.total_qty,
-        updated_at = now()
-      RETURNING room_type_id, d, total_qty
-    `, [roomTypeId, date, totalQty]);
+    const inventoryRepo = this.getInventoryRepo();
+    const roomType = await this.dataSource
+      .getRepository(RoomTypeEntity)
+      .createQueryBuilder('rt')
+      .select('rt.hotelId', 'hotelId')
+      .where('rt.id = :roomTypeId', { roomTypeId })
+      .getRawOne();
 
-    return result[0];
+    const hotelId = roomType?.hotelId;
+
+    const existingInventory = await inventoryRepo.findOne({
+      where: { hotelId, roomTypeId, date }
+    });
+
+    if (existingInventory) {
+      existingInventory.totalQty = totalQty;
+      existingInventory.updatedBy = userId;
+      await inventoryRepo.save(existingInventory);
+    } else {
+      const newInventory = inventoryRepo.create({
+        hotelId,
+        roomTypeId,
+        date,
+        totalQty,
+        usedQty: 0,
+        holdQty: 0,
+        createdBy: userId
+      });
+      await inventoryRepo.save(newInventory);
+    }
+
+    return { roomTypeId, date, totalQty };
   }
 }
