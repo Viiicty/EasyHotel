@@ -1,101 +1,136 @@
-.order-list {
+.order-list-page {
   min-height: 100vh;
   background-color: #f5f5f5;
 
-  .tabs {
-    position: sticky;
-    top: 0;
-    z-index: 100;
+  .status-tabs {
     display: flex;
     background-color: #fff;
-    padding: 20px 0;
-    border-bottom: 1px solid #e8e8e8;
+    padding: 0 20px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 
-    .tab {
+    .status-tab {
       flex: 1;
-      text-align: center;
-      font-size: 28px;
-      color: #666;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 0;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s;
 
       &.active {
-        color: #1890ff;
-        font-weight: bold;
+        border-bottom-color: #1890ff;
+
+        .status-text {
+          color: #1890ff;
+          font-weight: 500;
+        }
+      }
+
+      .status-text {
+        font-size: 28px;
+        color: #666;
       }
     }
   }
 
-  .order-container {
-    padding: 20px 30px;
+  .order-list {
+    padding: 20px;
+  }
 
-    .order-card {
-      background-color: #fff;
-      border-radius: 16px;
-      padding: 30px;
+  .order-card {
+    background-color: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+    .order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 20px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 
-      .order-header {
+      .hotel-name {
+        font-size: 32px;
+        font-weight: bold;
+        color: #333;
+      }
+
+      .order-status {
+        .status-text {
+          font-size: 24px;
+          font-weight: 500;
+        }
+      }
+    }
+
+    .order-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+
+      .order-info {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
-        padding-bottom: 20px;
-        border-bottom: 1px solid #f0f0f0;
 
-        .hotel-name {
-          font-size: 30px;
-          font-weight: bold;
+        .info-label {
+          font-size: 24px;
+          color: #999;
+        }
+
+        .info-value {
+          font-size: 24px;
           color: #333;
         }
+      }
+    }
 
-        .order-status {
-          font-size: 26px;
-          padding: 8px 16px;
-          border-radius: 8px;
+    .order-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 16px;
+      border-top: 1px solid #f0f0f0;
 
-          &.status-待支付 {
-            background-color: #fff7e6;
-            color: #faad14;
-          }
-
-          &.status-已完成 {
-            background-color: #f6ffed;
-            color: #52c41a;
-          }
-
-          &.status-已取消 {
-            background-color: #f5f5f5;
-            color: #999;
-          }
-        }
+      .total-price {
+        font-size: 36px;
+        font-weight: bold;
+        color: #ff4d4f;
       }
 
-      .order-body {
-        .order-item {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 16px;
-
-          &:last-child {
-            margin-bottom: 0;
-          }
-
-          .label {
-            font-size: 26px;
-            color: #999;
-          }
-
-          .value {
-            font-size: 26px;
-            color: #333;
-
-            &.price {
-              font-weight: bold;
-              color: #ff4d4f;
-            }
-          }
-        }
+      .order-no {
+        font-size: 24px;
+        color: #999;
       }
+    }
+  }
+
+  .empty-orders {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 120px 20px;
+
+    .empty-text {
+      font-size: 28px;
+      color: #999;
+    }
+  }
+
+  .load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+
+    .load-more-text {
+      font-size: 24px;
+      color: #999;
     }
   }
 }

@@ -308,7 +308,7 @@ export class BookingService {
       }
 
       const holdToken = uuidv4();
-      const expireAt = new Date(Date.now() + 15 * 60 * 1000);
+      const expireAt = new Date(Date.now() + 1 * 60 * 1000);
 
       const hold = queryRunner.manager.create(InventoryHoldEntity, {
         hotelId,
@@ -538,7 +538,36 @@ export class BookingService {
     const random = Math.floor(Math.random() * 10000)
       .toString()
       .padStart(4, '0');
-    return `ORD${timestamp}${random}`;
+    return `ORDER${timestamp}${random}`;
+  }
+
+  async mockPayment(
+    userId: string,
+    orderId: string,
+  ): Promise<{ success: boolean; orderNo: string }> {
+    const order = await this.getBookingOrderRepo().findOne({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new NotFoundException('订单不存在');
+    }
+
+    if (order.userId !== userId) {
+      throw new BadRequestException('无权操作此订单');
+    }
+
+    if (order.status !== 'PENDING') {
+      throw new BadRequestException('订单状态不正确，无法支付');
+    }
+
+    order.status = 'PAID';
+    await this.getBookingOrderRepo().save(order);
+
+    return {
+      success: true,
+      orderNo: order.orderNo || '',
+    };
   }
 
   private validateIdCard(idCard: string): boolean {

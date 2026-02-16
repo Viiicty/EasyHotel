@@ -142,6 +142,14 @@ export class MiniBookingController {
     return this.bookingService.submitBooking(req.user.id, dto);
   }
 
+  @Post('mock-payment')
+  async mockPayment(
+    @Body() dto: { orderId: string },
+    @Request() req,
+  ): Promise<{ success: boolean; orderNo: string }> {
+    return this.bookingService.mockPayment(req.user.id, dto.orderId);
+  }
+
   @Post('confirm')
   async confirmBooking(
     @Body() dto: ConfirmBookingDto,

@@ -506,11 +506,11 @@ export default class HotelDetailPage extends Component<{}, HotelDetailState> {
                       )}
                     </View>
                     <Button 
-                      className={`book-btn ${showSoldOut ? 'book-btn-disabled' : ''}`} 
-                      onClick={() => !showSoldOut && this.handleBook(roomType.id)}
-                      disabled={showSoldOut}
+                      className={`book-btn ${isLoggedIn && showSoldOut ? 'book-btn-disabled' : ''}`} 
+                      onClick={() => this.handleBook(roomType.id)}
+                      disabled={isLoggedIn && showSoldOut}
                     >
-                      {showSoldOut ? '已定完' : '订'}
+                      {!isLoggedIn ? '订' : '订'}
                     </Button>
                   </View>
                 )

@@ -11,6 +11,7 @@ import { RoomTypePriceDailyModule } from './room-type-price-daily/room-type-pric
 import { InventoryModule } from './inventory/inventory.module';
 import { UploadModule } from './upload/upload.module';
 import { BookingModule } from './booking/booking.module';
+import { OrderModule } from './order/order.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { BookingModule } from './booking/booking.module';
     InventoryModule,
     UploadModule,
     BookingModule,
+    OrderModule,
   ],
   providers: [
     {

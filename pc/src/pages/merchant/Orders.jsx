@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, Table, Button, Space, Tag, Modal, Descriptions, message, DatePicker, Select, Input, Tabs } from 'antd'
 import {
   EyeOutlined,
@@ -6,64 +6,35 @@ import {
   DownloadOutlined,
   PrinterOutlined
 } from '@ant-design/icons'
+import { merchantOrderApi } from '../../api/merchantOrder'
+
+const STATUS_MAP = {
+  'PENDING': '待支付',
+  'PAID': '待确认',
+  'CONFIRMED': '已确认',
+  'CANCELLED': '已取消',
+  'REFUNDED': '已退款',
+  'COMPLETED': '已完成'
+}
+
+const STATUS_COLOR_MAP = {
+  'PENDING': 'default',
+  'PAID': 'warning',
+  'CONFIRMED': 'processing',
+  'CANCELLED': 'default',
+  'REFUNDED': 'error',
+  'COMPLETED': 'success'
+}
 
 function Orders() {
   const [activeTab, setActiveTab] = useState('all')
-  const [dataSource, setDataSource] = useState([
-    {
-      key: '1',
-      orderNo: 'ORD20240115001',
-      hotelName: '杭州君悦酒店',
-      roomType: '豪华大床房',
-      guestName: '张三',
-      checkIn: '2024-01-20',
-      checkOut: '2024-01-22',
-      nights: 2,
-      price: 1200,
-      status: '已确认',
-      orderTime: '2024-01-15 14:30',
-    },
-    {
-      key: '2',
-      orderNo: 'ORD20240115002',
-      hotelName: '北京瑞吉酒店',
-      roomType: '标准双床房',
-      guestName: '李四',
-      checkIn: '2024-01-18',
-      checkOut: '2024-01-19',
-      nights: 1,
-      price: 600,
-      status: '待确认',
-      orderTime: '2024-01-15 10:20',
-    },
-    {
-      key: '3',
-      orderNo: 'ORD20240114001',
-      hotelName: '上海浦东香格里拉',
-      roomType: '行政套房',
-      guestName: '王五',
-      checkIn: '2024-01-17',
-      checkOut: '2024-01-19',
-      nights: 2,
-      price: 2400,
-      status: '已完成',
-      orderTime: '2024-01-14 16:45',
-    },
-    {
-      key: '4',
-      orderNo: 'ORD20240113001',
-      hotelName: '广州白云宾馆',
-      roomType: '豪华大床房',
-      guestName: '赵六',
-      checkIn: '2024-01-16',
-      checkOut: '2024-01-17',
-      nights: 1,
-      price: 500,
-      status: '已取消',
-      orderTime: '2024-01-13 09:15',
-    },
-  ])
-
+  const [loading, setLoading] = useState(false)
+  const [dataSource, setDataSource] = useState([])
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0
+  })
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [filters, setFilters] = useState({
@@ -72,19 +43,47 @@ function Orders() {
     keyword: '',
   })
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case '待确认':
-        return 'warning'
-      case '已确认':
-        return 'processing'
-      case '已完成':
-        return 'success'
-      case '已取消':
-        return 'default'
-      default:
-        return 'default'
+  useEffect(() => {
+    loadOrders()
+  }, [activeTab, pagination.current, pagination.pageSize])
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true)
+      const params = {
+        page: pagination.current,
+        pageSize: pagination.pageSize
+      }
+      
+      if (activeTab !== 'all') {
+        params.status = activeTab
+      }
+      
+      if (filters.status) {
+        params.status = filters.status
+      }
+
+      const result = await merchantOrderApi.getOrders(params)
+      
+      setDataSource(result.orders || [])
+      setPagination({
+        ...pagination,
+        total: result.total || 0
+      })
+    } catch (error) {
+      console.error('加载订单失败:', error)
+      message.error(error.message || '加载订单失败')
+    } finally {
+      setLoading(false)
     }
+  }
+
+  const getStatusColor = (status) => {
+    return STATUS_COLOR_MAP[status] || 'default'
+  }
+
+  const getStatusText = (status) => {
+    return STATUS_MAP[status] || status
   }
 
   const columns = [
@@ -96,13 +95,13 @@ function Orders() {
     },
     {
       title: '酒店名称',
-      dataIndex: 'hotelName',
+      dataIndex: ['hotel', 'nameZh'],
       key: 'hotelName',
       width: 180,
     },
     {
       title: '房型',
-      dataIndex: 'roomType',
+      dataIndex: ['roomType', 'name'],
       key: 'roomType',
       width: 120,
     },
@@ -114,15 +113,17 @@ function Orders() {
     },
     {
       title: '入住日期',
-      dataIndex: 'checkIn',
+      dataIndex: 'checkinDate',
       key: 'checkIn',
       width: 120,
+      render: (date) => date ? new Date(date).toLocaleDateString('zh-CN') : '-',
     },
     {
       title: '离店日期',
-      dataIndex: 'checkOut',
+      dataIndex: 'checkoutDate',
       key: 'checkOut',
       width: 120,
+      render: (date) => date ? new Date(date).toLocaleDateString('zh-CN') : '-',
     },
     {
       title: '晚数',
@@ -132,10 +133,10 @@ function Orders() {
     },
     {
       title: '订单金额',
-      dataIndex: 'price',
+      dataIndex: 'totalAmount',
       key: 'price',
       width: 120,
-      render: (price) => `¥${price}`,
+      render: (price) => price ? `¥${price}` : '-',
     },
     {
       title: '状态',
@@ -144,15 +145,16 @@ function Orders() {
       width: 100,
       render: (status) => (
         <Tag color={getStatusColor(status)}>
-          {status}
+          {getStatusText(status)}
         </Tag>
       ),
     },
     {
       title: '下单时间',
-      dataIndex: 'orderTime',
+      dataIndex: 'createdTime',
       key: 'orderTime',
       width: 180,
+      render: (date) => date ? new Date(date).toLocaleString('zh-CN') : '-',
     },
     {
       title: '操作',
@@ -169,34 +171,75 @@ function Orders() {
           >
             查看
           </Button>
-          {record.status === '待确认' && (
-            <Button
-              type="link"
-              size="small"
-              onClick={() => handleConfirm(record)}
-            >
-              确认
-            </Button>
+          {record.status === 'PAID' && (
+            <>
+              <Button
+                type="link"
+                size="small"
+                onClick={() => handleConfirm(record)}
+              >
+                确认
+              </Button>
+              <Button
+                type="link"
+                size="small"
+                danger
+                onClick={() => handleReject(record)}
+              >
+                拒绝
+              </Button>
+            </>
           )}
         </Space>
       ),
     },
   ]
 
-  const handleViewDetail = (order) => {
-    setSelectedOrder(order)
-    setIsDetailModalOpen(true)
+  const handleViewDetail = async (order) => {
+    try {
+      const detail = await merchantOrderApi.getOrderById(order.id)
+      setSelectedOrder(detail)
+      setIsDetailModalOpen(true)
+    } catch (error) {
+      console.error('获取订单详情失败:', error)
+      message.error(error.message || '获取订单详情失败')
+    }
   }
 
-  const handleConfirm = (order) => {
-    const newData = dataSource.map(item => {
-      if (item.key === order.key) {
-        return { ...item, status: '已确认' }
+  const handleConfirm = async (order) => {
+    try {
+      await merchantOrderApi.confirmOrder(order.id)
+      message.success('订单已确认')
+      loadOrders()
+    } catch (error) {
+      console.error('确认订单失败:', error)
+      message.error(error.message || '确认订单失败')
+    }
+  }
+
+  const handleReject = (order) => {
+    Modal.confirm({
+      title: '确认拒绝订单',
+      content: (
+        <Input.TextArea
+          placeholder="请输入拒绝原因"
+          rows={4}
+          onChange={(e) => {
+            window.rejectReason = e.target.value
+          }}
+        />
+      ),
+      onOk: async () => {
+        try {
+          await merchantOrderApi.rejectOrder(order.id, window.rejectReason || '')
+          message.success('订单已拒绝')
+          loadOrders()
+        } catch (error) {
+          console.error('拒绝订单失败:', error)
+          message.error(error.message || '拒绝订单失败')
+        }
       }
-      return item
     })
-    setDataSource(newData)
-    message.success('订单已确认')
   }
 
   const handleExport = () => {
@@ -207,26 +250,8 @@ function Orders() {
     message.info('打印功能开发中')
   }
 
-  const getFilteredDataSource = (status) => {
-    let filtered = dataSource
-
-    if (status !== 'all') {
-      filtered = filtered.filter(item => item.status === status)
-    }
-
-    if (filters.status) {
-      filtered = filtered.filter(item => item.status === filters.status)
-    }
-
-    if (filters.keyword) {
-      filtered = filtered.filter(item =>
-        item.orderNo.includes(filters.keyword) ||
-        item.hotelName.includes(filters.keyword) ||
-        item.guestName.includes(filters.keyword)
-      )
-    }
-
-    return filtered
+  const handleTableChange = (newPagination) => {
+    setPagination(newPagination)
   }
 
   return (
@@ -239,17 +264,22 @@ function Orders() {
               style={{ width: 250 }}
               prefix={<SearchOutlined />}
               onChange={(e) => setFilters({ ...filters, keyword: e.target.value })}
+              onPressEnter={loadOrders}
             />
             <Select
               placeholder="订单状态"
               style={{ width: 150 }}
               allowClear
-              onChange={(value) => setFilters({ ...filters, status: value })}
+              onChange={(value) => {
+                setFilters({ ...filters, status: value })
+                setPagination({ ...pagination, current: 1 })
+              }}
             >
-              <Select.Option value="待确认">待确认</Select.Option>
-              <Select.Option value="已确认">已确认</Select.Option>
-              <Select.Option value="已完成">已完成</Select.Option>
-              <Select.Option value="已取消">已取消</Select.Option>
+              <Select.Option value="PENDING">待支付</Select.Option>
+              <Select.Option value="PAID">待确认</Select.Option>
+              <Select.Option value="CONFIRMED">已确认</Select.Option>
+              <Select.Option value="CANCELLED">已取消</Select.Option>
+              <Select.Option value="COMPLETED">已完成</Select.Option>
             </Select>
             <DatePicker.RangePicker
               placeholder={['入住日期', '离店日期']}
@@ -263,22 +293,27 @@ function Orders() {
             </Button>
           </Space>
 
-          <Tabs activeKey={activeTab} onChange={setActiveTab}>
+          <Tabs activeKey={activeTab} onChange={(key) => {
+            setActiveTab(key)
+            setPagination({ ...pagination, current: 1 })
+          }}>
             <Tabs.TabPane tab="全部订单" key="all" />
-            <Tabs.TabPane tab="待确认" key="待确认" />
-            <Tabs.TabPane tab="已确认" key="已确认" />
-            <Tabs.TabPane tab="已完成" key="已完成" />
-            <Tabs.TabPane tab="已取消" key="已取消" />
+            <Tabs.TabPane tab="待确认" key="PAID" />
+            <Tabs.TabPane tab="已确认" key="CONFIRMED" />
+            <Tabs.TabPane tab="已完成" key="COMPLETED" />
+            <Tabs.TabPane tab="已取消" key="CANCELLED" />
           </Tabs>
 
           <Table
-            dataSource={getFilteredDataSource(activeTab)}
+            loading={loading}
+            dataSource={dataSource}
             columns={columns}
             pagination={{
-              pageSize: 10,
+              ...pagination,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条`,
             }}
+            onChange={handleTableChange}
             scroll={{ x: 1500 }}
           />
         </Space>
@@ -299,33 +334,42 @@ function Orders() {
               {selectedOrder.orderNo}
             </Descriptions.Item>
             <Descriptions.Item label="酒店名称">
-              {selectedOrder.hotelName}
+              {selectedOrder.hotel?.nameZh}
             </Descriptions.Item>
             <Descriptions.Item label="房型">
-              {selectedOrder.roomType}
+              {selectedOrder.roomType?.name}
             </Descriptions.Item>
             <Descriptions.Item label="客人姓名">
               {selectedOrder.guestName}
             </Descriptions.Item>
+            <Descriptions.Item label="联系电话">
+              {selectedOrder.guestPhone}
+            </Descriptions.Item>
+            <Descriptions.Item label="身份证号" span={2}>
+              {selectedOrder.idCard}
+            </Descriptions.Item>
             <Descriptions.Item label="入住日期">
-              {selectedOrder.checkIn}
+              {selectedOrder.checkinDate ? new Date(selectedOrder.checkinDate).toLocaleDateString('zh-CN') : '-'}
             </Descriptions.Item>
             <Descriptions.Item label="离店日期">
-              {selectedOrder.checkOut}
+              {selectedOrder.checkoutDate ? new Date(selectedOrder.checkoutDate).toLocaleDateString('zh-CN') : '-'}
             </Descriptions.Item>
             <Descriptions.Item label="晚数">
               {selectedOrder.nights}
             </Descriptions.Item>
+            <Descriptions.Item label="房间数">
+              {selectedOrder.rooms}
+            </Descriptions.Item>
             <Descriptions.Item label="订单金额" span={2}>
-              ¥{selectedOrder.price}
+              {selectedOrder.totalAmount ? `¥${selectedOrder.totalAmount}` : '-'}
             </Descriptions.Item>
             <Descriptions.Item label="订单状态">
               <Tag color={getStatusColor(selectedOrder.status)}>
-                {selectedOrder.status}
+                {getStatusText(selectedOrder.status)}
               </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="下单时间">
-              {selectedOrder.orderTime}
+              {selectedOrder.createdTime ? new Date(selectedOrder.createdTime).toLocaleString('zh-CN') : '-'}
             </Descriptions.Item>
           </Descriptions>
         )}

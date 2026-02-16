@@ -40,4 +40,7 @@ export class InventoryHoldEntity extends BaseEntity {
 
   @Column({ type: 'timestamp', nullable: false, comment: '过期时间（15分钟后）' })
   expireAt?: Date;
+
+  @Column({ type: 'uuid', nullable: true, name: 'order_id', comment: '订单ID' })
+  orderId?: string;
 }

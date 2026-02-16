@@ -6,6 +6,7 @@ export default defineAppConfig({
     'pages/book/book',
     'pages/user/profile',
     'pages/order/list',
+    'pages/order/detail',
     'pages/login/login',
     'pages/register/register'
   ],

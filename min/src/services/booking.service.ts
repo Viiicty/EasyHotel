@@ -124,5 +124,25 @@ export const bookingService = {
     console.log('response.data:', response.data)
     console.log('response.data.data:', response.data?.data)
     return response.data?.data || response.data
+  },
+
+  async mockPayment(params: {
+    orderId: string
+  }) {
+    const token = userService.getToken()
+    const response = await Taro.request({
+      url: `${BASE_URL}/mini/booking/mock-payment`,
+      method: 'POST',
+      header: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      data: params
+    })
+    console.log('=== mockPayment 响应 ===')
+    console.log('response:', response)
+    console.log('response.data:', response.data)
+    console.log('response.data.data:', response.data?.data)
+    return response.data?.data || response.data
   }
 }

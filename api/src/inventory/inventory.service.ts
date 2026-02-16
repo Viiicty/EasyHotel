@@ -121,7 +121,7 @@ export class InventoryService {
 
     const queryRunner = this.dataSource.createQueryRunner();
     const holdToken = uuidv4();
-    const expireAt = new Date(Date.now() + 15 * 60 * 1000);
+    const expireAt = new Date(Date.now() + 1 * 60 * 1000);
 
     try {
       await queryRunner.connect();

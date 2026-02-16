@@ -8,6 +8,7 @@ import './index.scss'
 interface BookingState {
   hotelId: string
   roomTypeId: string
+  orderId: string
   checkIn: string
   checkOut: string
   rooms: number
@@ -36,6 +37,7 @@ export default class BookingPage extends Component<{}, BookingState> {
   state: BookingState = {
     hotelId: '',
     roomTypeId: '',
+    orderId: '',
     checkIn: '',
     checkOut: '',
     rooms: 1,
@@ -269,21 +271,23 @@ export default class BookingPage extends Component<{}, BookingState> {
       })
 
       this.setState({
+        orderId: result.orderId,
         holdToken: result.holdToken,
         expireAt: result.expireAt,
         submitting: false
       })
 
-      this.startCountdown()
-
       Taro.showModal({
         title: '订单已创建',
-        content: '请在15分钟内完成支付',
-        showCancel: false,
-        success: () => {
-          Taro.navigateTo({
-            url: `/pages/order/detail?orderId=${result.orderId}&holdToken=${result.holdToken}`
-          })
+        content: '订单号：' + result.orderNo + '\n请在15分钟内完成支付',
+        confirmText: '去支付',
+        cancelText: '稍后支付',
+        success: (res) => {
+          if (res.confirm) {
+            this.handleMockPayment()
+          } else {
+            Taro.navigateBack()
+          }
         }
       })
     } catch (error) {
@@ -294,6 +298,32 @@ export default class BookingPage extends Component<{}, BookingState> {
         icon: 'none'
       })
       this.setState({ submitting: false })
+    }
+  }
+
+  handleMockPayment = async () => {
+    try {
+      Taro.showLoading({ title: '支付中...' })
+      const result = await bookingService.mockPayment({
+        orderId: this.state.orderId
+      })
+      Taro.hideLoading()
+
+      Taro.showToast({
+        title: '支付成功',
+        icon: 'success'
+      })
+
+      Taro.navigateTo({
+        url: `/pages/order/detail?orderId=${this.state.orderId}`
+      })
+    } catch (error) {
+      Taro.hideLoading()
+      console.error('支付失败:', error)
+      Taro.showToast({
+        title: error.message || '支付失败',
+        icon: 'none'
+      })
     }
   }
 
