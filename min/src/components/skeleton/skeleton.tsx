@@ -1,16 +1,31 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { View } from '@tarojs/components'
 import './skeleton.scss'
 
 interface SkeletonProps {
   type?: 'banner' | 'card' | 'list'
+  showContent?: boolean
 }
 
-const Skeleton: React.FC<SkeletonProps> = ({ type = 'card' }) => {
+const Skeleton: React.FC<SkeletonProps> = ({ type = 'card', showContent = false }) => {
+  const [showShimmer, setShowShimmer] = useState(true)
+
+  useEffect(() => {
+    if (showContent) {
+      const shimmerTimer = setTimeout(() => {
+        setShowShimmer(false)
+      }, 800)
+
+      return () => {
+        clearTimeout(shimmerTimer)
+      }
+    }
+  }, [showContent])
+
   if (type === 'banner') {
     return (
       <View className='skeleton skeleton-banner'>
-        <View className='skeleton-shimmer' />
+        {showShimmer && <View className='skeleton-shimmer' />}
       </View>
     )
   }
@@ -19,27 +34,27 @@ const Skeleton: React.FC<SkeletonProps> = ({ type = 'card' }) => {
     return (
       <View className='skeleton skeleton-card'>
         <View className='skeleton-image'>
-          <View className='skeleton-shimmer' />
+          {showShimmer && <View className='skeleton-shimmer' />}
         </View>
         <View className='skeleton-content'>
           <View className='skeleton-title'>
-            <View className='skeleton-shimmer' />
+            {showShimmer && <View className='skeleton-shimmer' />}
           </View>
           <View className='skeleton-text'>
-            <View className='skeleton-shimmer' />
+            {showShimmer && <View className='skeleton-shimmer' />}
           </View>
           <View className='skeleton-text'>
-            <View className='skeleton-shimmer' />
+            {showShimmer && <View className='skeleton-shimmer' />}
           </View>
           <View className='skeleton-tags'>
             <View className='skeleton-tag'>
-              <View className='skeleton-shimmer' />
+              {showShimmer && <View className='skeleton-shimmer' />}
             </View>
             <View className='skeleton-tag'>
-              <View className='skeleton-shimmer' />
+              {showShimmer && <View className='skeleton-shimmer' />}
             </View>
             <View className='skeleton-tag'>
-              <View className='skeleton-shimmer' />
+              {showShimmer && <View className='skeleton-shimmer' />}
             </View>
           </View>
         </View>

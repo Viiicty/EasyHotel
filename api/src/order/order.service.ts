@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, Repository, In } from 'typeorm';
 import { BookingOrderEntity } from '../booking-order/booking-order.entity';
@@ -9,6 +9,8 @@ import { CreateOrderDto, OrderQueryDto, UpdateOrderStatusDto } from './dto/order
 
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
     @InjectDataSource()
     private dataSource: DataSource,
@@ -110,6 +112,14 @@ export class OrderService {
       return;
     }
 
+    const order = await this.getOrderRepo().findOne({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      return;
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     try {
       await queryRunner.connect();
@@ -126,8 +136,8 @@ export class OrderService {
       );
 
       for (const inventory of inventoryRecords) {
-        inventory.holdQty = Math.max(0, (inventory.holdQty || 0) - hold.qty);
-        inventory.usedQty = (inventory.usedQty || 0) + hold.qty;
+        inventory.holdQty = Math.max(0, (inventory.holdQty || 0) - order.rooms);
+        inventory.usedQty = (inventory.usedQty || 0) + order.rooms;
         await queryRunner.manager.save(inventory);
       }
 
@@ -152,6 +162,14 @@ export class OrderService {
       return;
     }
 
+    const order = await this.getOrderRepo().findOne({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      return;
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     try {
       await queryRunner.connect();
@@ -168,7 +186,7 @@ export class OrderService {
       );
 
       for (const inventory of inventoryRecords) {
-        inventory.holdQty = Math.max(0, (inventory.holdQty || 0) - hold.qty);
+        inventory.holdQty = Math.max(0, (inventory.holdQty || 0) - order.rooms);
         await queryRunner.manager.save(inventory);
       }
 
@@ -182,16 +200,6 @@ export class OrderService {
     } finally {
       await queryRunner.release();
     }
-  }
-
-  private getDatesInRange(startDate: Date, endDate: Date): Date[] {
-    const dates: Date[] = [];
-    const currentDate = new Date(startDate);
-    while (currentDate < endDate) {
-      dates.push(new Date(currentDate));
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-    return dates;
   }
 
   async checkOrderStatus(orderId: string) {
@@ -341,5 +349,106 @@ export class OrderService {
     }
 
     return order;
+  }
+
+  async cancelExpiredOrder(orderId: string) {
+    this.logger.log(`=== cancelExpiredOrder 开始 ===`);
+    this.logger.log(`订单ID: ${orderId}`);
+    
+    const order = await this.getOrderRepo().findOne({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      this.logger.warn(`订单不存在: ${orderId}`);
+      return;
+    }
+
+    this.logger.log(`订单信息: rooms=${order.rooms}, nights=${order.nights}, roomTypeId=${order.roomTypeId}`);
+
+    if (order.status !== 'PENDING') {
+      this.logger.log(`订单状态已变更: ${order.status}, 跳过取消`);
+      return;
+    }
+
+    const hold = await this.getHoldRepo().findOne({
+      where: { orderId },
+    });
+
+    this.logger.log(`库存锁定记录: ${hold ? JSON.stringify({ id: hold.id, qty: hold.qty, roomTypeId: hold.roomTypeId, checkIn: hold.checkIn, checkOut: hold.checkOut }) : '未找到'}`);
+
+    if (hold) {
+      const queryRunner = this.dataSource.createQueryRunner();
+      try {
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
+        const dates = this.getDatesInRange(hold.checkIn, hold.checkOut);
+        this.logger.log(`需要更新的日期范围: ${dates.map(d => d.toISOString().split('T')[0]).join(', ')}`);
+
+        const inventoryRecords = await queryRunner.manager.find(
+          RoomTypeInventoryDailyEntity,
+          {
+            where: {
+              roomTypeId: hold.roomTypeId,
+              date: In(dates),
+            },
+          },
+        );
+
+        this.logger.log(`找到的库存记录数量: ${inventoryRecords.length}`);
+
+        for (const inventory of inventoryRecords) {
+          const dateStr = inventory.date instanceof Date ? inventory.date.toISOString().split('T')[0] : String(inventory.date);
+          const oldHoldQty = inventory.holdQty || 0;
+          const oldUsedQty = inventory.usedQty || 0;
+          const oldTotalQty = inventory.totalQty || 0;
+          const oldAvailableQty = oldTotalQty - oldUsedQty - oldHoldQty;
+          
+          const newHoldQty = Math.max(0, oldHoldQty - order.rooms);
+          const newAvailableQty = oldTotalQty - oldUsedQty - newHoldQty;
+          
+          this.logger.log(`=== 更新库存 [${dateStr}] ===`);
+          this.logger.log(`更新前: totalQty=${oldTotalQty}, usedQty=${oldUsedQty}, holdQty=${oldHoldQty}, availableQty=${oldAvailableQty}`);
+          this.logger.log(`更新后: totalQty=${oldTotalQty}, usedQty=${oldUsedQty}, holdQty=${newHoldQty}, availableQty=${newAvailableQty}`);
+          this.logger.log(`变化: holdQty ${oldHoldQty} -> ${newHoldQty} (减少 ${order.rooms}), availableQty ${oldAvailableQty} -> ${newAvailableQty} (增加 ${order.rooms})`);
+          
+          inventory.holdQty = newHoldQty;
+          await queryRunner.manager.save(inventory);
+        }
+
+        hold.status = 'EXPIRED';
+        await queryRunner.manager.save(hold);
+
+        await queryRunner.commitTransaction();
+        this.logger.log(`事务已提交`);
+      } catch (error) {
+        this.logger.error(`事务失败，正在回滚: ${error.message}`);
+        await queryRunner.rollbackTransaction();
+        throw error;
+      } finally {
+        await queryRunner.release();
+      }
+    }
+
+    order.status = 'CANCELLED';
+    order.updatedBy = 'SYSTEM';
+    await this.getOrderRepo().save(order);
+    
+    this.logger.log(`订单 ${orderId} 已取消并释放库存`);
+    this.logger.log(`=== cancelExpiredOrder 结束 ===`);
+  }
+
+  private getDatesInRange(startDate: Date, endDate: Date): Date[] {
+    const dates: Date[] = [];
+    const currentDate = new Date(startDate);
+    const end = new Date(endDate);
+
+    while (currentDate < end) {
+      dates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return dates;
   }
 }

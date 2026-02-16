@@ -1,10 +1,10 @@
-import { getToken } from './user.service'
+import { userService } from './user.service'
 
 const API_BASE = 'http://192.168.3.22:8888'
 
 export const orderService = {
   getUserOrders: async (params: { status?: string; page?: number; pageSize?: number }) => {
-    const token = getToken()
+    const token = userService.getToken()
     const queryParams = new URLSearchParams()
     if (params.status) queryParams.append('status', params.status)
     if (params.page) queryParams.append('page', String(params.page))
@@ -26,7 +26,7 @@ export const orderService = {
   },
 
   getOrderById: async (orderId: string) => {
-    const token = getToken()
+    const token = userService.getToken()
     const response = await fetch(`${API_BASE}/mini/orders/${orderId}`, {
       method: 'GET',
       headers: {
@@ -43,7 +43,7 @@ export const orderService = {
   },
 
   getOrderStatus: async (orderId: string) => {
-    const token = getToken()
+    const token = userService.getToken()
     const response = await fetch(`${API_BASE}/mini/orders/${orderId}/status`, {
       method: 'GET',
       headers: {
@@ -60,7 +60,7 @@ export const orderService = {
   },
 
   confirmOrder: async (orderId: string) => {
-    const token = getToken()
+    const token = userService.getToken()
     const response = await fetch(`${API_BASE}/mini/orders/${orderId}/confirm`, {
       method: 'POST',
       headers: {
@@ -78,7 +78,7 @@ export const orderService = {
   },
 
   cancelOrder: async (orderId: string) => {
-    const token = getToken()
+    const token = userService.getToken()
     const response = await fetch(`${API_BASE}/mini/orders/${orderId}/cancel`, {
       method: 'POST',
       headers: {
@@ -96,7 +96,7 @@ export const orderService = {
   },
 
   deleteOrder: async (orderId: string) => {
-    const token = getToken()
+    const token = userService.getToken()
     const response = await fetch(`${API_BASE}/mini/orders/${orderId}`, {
       method: 'DELETE',
       headers: {

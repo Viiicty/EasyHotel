@@ -8,6 +8,7 @@ import { RoomTypeInventoryDailyEntity } from '../inventory/room-type-inventory-d
 import { RoomTypePriceDailyEntity } from '../room-type-price-daily/room-type-price-daily.entity';
 import { RoomTypeEntity } from '../room-type/room-type.entity';
 import { HotelEntity } from '../hotel/hotel.entity';
+import { OrderExpiryQueue } from '../queue/order-expiry.queue';
 
 interface PrepareBookingDto {
   hotelId: string;
@@ -68,6 +69,7 @@ export class BookingService {
   constructor(
     @InjectDataSource()
     private dataSource: DataSource,
+    private orderExpiryQueue: OrderExpiryQueue,
   ) {}
 
   private getBookingOrderRepo(): Repository<BookingOrderEntity> {
@@ -366,7 +368,13 @@ export class BookingService {
 
       const savedOrder = await queryRunner.manager.save(order);
 
+      hold.orderId = savedOrder.id;
+      await queryRunner.manager.save(hold);
+
       await queryRunner.commitTransaction();
+
+      const delayMs = 60 * 1000;
+      await this.orderExpiryQueue.addExpiryJob(savedOrder.id, delayMs);
 
       return {
         orderId: savedOrder.id,
@@ -563,6 +571,8 @@ export class BookingService {
 
     order.status = 'PAID';
     await this.getBookingOrderRepo().save(order);
+
+    await this.orderExpiryQueue.removeJob(orderId);
 
     return {
       success: true,

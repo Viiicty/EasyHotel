@@ -1,6 +1,9 @@
 node_modules
 dist
-.temp
+build
 .rn_temp
-.DS_Store
+.temp
+.taro
+.miniprogram_npm
 *.log
+.DS_Store

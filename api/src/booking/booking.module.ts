@@ -9,6 +9,7 @@ import { RoomTypeInventoryDailyEntity } from '../inventory/room-type-inventory-d
 import { RoomTypePriceDailyEntity } from '../room-type-price-daily/room-type-price-daily.entity';
 import { RoomTypeEntity } from '../room-type/room-type.entity';
 import { HotelEntity } from '../hotel/hotel.entity';
+import { QueueModule } from '../queue/queue.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { HotelEntity } from '../hotel/hotel.entity';
       HotelEntity,
     ]),
     PassportModule,
+    QueueModule,
   ],
   controllers: [BookingController, MiniBookingController],
   providers: [BookingService],

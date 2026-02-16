@@ -74,20 +74,12 @@ export default class HotelDetailPage extends Component<{}, HotelDetailState> {
     }
 
     try {
-      this.setState({ loading: true })
-
       const cacheKey = `hotel_${id}`
 
       const cachedHotel = Taro.getStorageSync(cacheKey)
       const cachedRoomTypes = Taro.getStorageSync(`${cacheKey}_rooms`)
 
-      if (cachedHotel) {
-        this.setState({
-          hotel: cachedHotel,
-          roomTypes: cachedRoomTypes || [],
-          loading: false
-        })
-      }
+      const startTime = Date.now()
 
       const hotelDetail = await hotelService.getHotelDetail(id)
       const roomTypes = await hotelService.getRoomTypesByHotel(id)
@@ -95,11 +87,17 @@ export default class HotelDetailPage extends Component<{}, HotelDetailState> {
       Taro.setStorageSync(cacheKey, hotelDetail)
       Taro.setStorageSync(`${cacheKey}_rooms`, roomTypes)
 
-      this.setState({
-        hotel: hotelDetail,
-        roomTypes: roomTypes,
-        loading: false
-      })
+      const elapsedTime = Date.now() - startTime
+      const minSkeletonTime = 800
+      const delayTime = Math.max(0, minSkeletonTime - elapsedTime)
+
+      setTimeout(() => {
+        this.setState({
+          hotel: hotelDetail,
+          roomTypes: roomTypes,
+          loading: false
+        })
+      }, delayTime)
 
       await this.loadRoomInventories()
     } catch (error) {
@@ -344,17 +342,13 @@ export default class HotelDetailPage extends Component<{}, HotelDetailState> {
     if (loading) {
       return (
         <View className='hotel-detail'>
-          <Skeleton type='banner' />
+          <Skeleton type='banner' showContent={true} />
           <View className='hotel-info-card'>
-            <View className='skeleton-content'>
-              <View className='skeleton-title' style={{ width: '60%', height: '32px', background: '#f5f5f5', borderRadius: '4px', marginBottom: '12px' }} />
-              <View className='skeleton-text' style={{ width: '100%', height: '24px', background: '#f5f5f5', borderRadius: '4px', marginBottom: '8px' }} />
-              <View className='skeleton-text' style={{ width: '100%', height: '24px', background: '#f5f5f5', borderRadius: '4px', marginBottom: '8px' }} />
-            </View>
+            <Skeleton type='card' showContent={true} />
           </View>
           <View className='room-types-card'>
-            <Skeleton type='card' />
-            <Skeleton type='card' />
+            <Skeleton type='card' showContent={true} />
+            <Skeleton type='card' showContent={true} />
           </View>
         </View>
       )

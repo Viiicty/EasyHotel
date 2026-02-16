@@ -12,6 +12,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { UploadModule } from './upload/upload.module';
 import { BookingModule } from './booking/booking.module';
 import { OrderModule } from './order/order.module';
+import { QueueModule } from './queue/queue.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { OrderModule } from './order/order.module';
     UploadModule,
     BookingModule,
     OrderModule,
+    QueueModule,
   ],
   providers: [
     {

@@ -119,6 +119,8 @@ export default class HotelList extends Component<{}, HotelListState> {
     this.setState({ loading: true })
 
     try {
+      const startTime = Date.now()
+
       const result = await hotelService.searchHotels({
         city: searchParams.city,
         keyword: searchParams.hotelName,
@@ -130,22 +132,27 @@ export default class HotelList extends Component<{}, HotelListState> {
         checkOut: searchParams.checkOut
       })
 
-      if (result && result.length > 0) {
-        this.setState({
-          hotels: result,
-          page: 1,
-          hasMore: result.length >= pageSize
-        })
-      } else {
-        this.setState({ hotels: [], hasMore: false })
-      }
+      const elapsedTime = Date.now() - startTime
+      const minSkeletonTime = 800
+      const delayTime = Math.max(0, minSkeletonTime - elapsedTime)
+
+      setTimeout(() => {
+        if (result && result.length > 0) {
+          this.setState({
+            hotels: result,
+            page: 1,
+            hasMore: result.length >= pageSize
+          })
+        } else {
+          this.setState({ hotels: [], hasMore: false })
+        }
+      }, delayTime)
     } catch (error) {
       console.error('加载酒店失败:', error)
       Taro.showToast({
         title: '加载失败',
         icon: 'none'
       })
-    } finally {
       this.setState({ loading: false })
     }
   }
@@ -305,6 +312,9 @@ export default class HotelList extends Component<{}, HotelListState> {
     Taro.navigateTo({
       url: `/pages/hotel/detail?id=${hotelId}&checkIn=${searchParams.checkIn}&checkOut=${searchParams.checkOut}`
     })
+    setTimeout(() => {
+      Taro.hideLoading()
+    }, 100)
   }
 
   formatDateDisplay = (dateStr: string) => {
@@ -529,16 +539,16 @@ export default class HotelList extends Component<{}, HotelListState> {
               
               {loadingMore && (
                 <>
-                  <Skeleton type='card' />
-                  <Skeleton type='card' />
+                  <Skeleton type='card' showContent={true} />
+                  <Skeleton type='card' showContent={true} />
                 </>
               )}
             </>
           ) : loadingMore ? (
             <>
-              <Skeleton type='card' />
-              <Skeleton type='card' />
-              <Skeleton type='card' />
+              <Skeleton type='card' showContent={true} />
+              <Skeleton type='card' showContent={true} />
+              <Skeleton type='card' showContent={true} />
             </>
           ) : (
             <View className='empty-state'>

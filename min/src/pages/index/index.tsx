@@ -3,6 +3,7 @@ import { View, Text, Swiper, SwiperItem, Picker, Input, Image, ScrollView, Butto
 import Taro from '@tarojs/taro'
 import { hotelService, Banner, Hotel } from '../../services/hotel.service'
 import Calendar from '../../components/calendar/calendar'
+import Skeleton from '../../components/skeleton/skeleton'
 import './index.scss'
 
 interface SearchParams {
@@ -81,9 +82,17 @@ export default class Index extends Component<{}, IndexState> {
 
   loadBanners = async () => {
     try {
+      const startTime = Date.now()
       const banners = await hotelService.getBanners()
       console.log('Banners loaded:', banners)
-      this.setState({ bannerList: banners || [] })
+
+      const elapsedTime = Date.now() - startTime
+      const minSkeletonTime = 800
+      const delayTime = Math.max(0, minSkeletonTime - elapsedTime)
+
+      setTimeout(() => {
+        this.setState({ bannerList: banners || [] })
+      }, delayTime)
     } catch (error) {
       console.error('加载Banner失败:', error)
       this.setState({ bannerList: [] })
@@ -92,13 +101,21 @@ export default class Index extends Component<{}, IndexState> {
 
   loadRecommendHotels = async () => {
     try {
+      const startTime = Date.now()
       const today = new Date()
       const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
       console.log('查询日期:', dateStr)
 
       const hotels = await hotelService.getRecommendHotels(4, dateStr)
       console.log('Recommend hotels loaded:', hotels)
-      this.setState({ recommendHotels: hotels || [] })
+
+      const elapsedTime = Date.now() - startTime
+      const minSkeletonTime = 800
+      const delayTime = Math.max(0, minSkeletonTime - elapsedTime)
+
+      setTimeout(() => {
+        this.setState({ recommendHotels: hotels || [] })
+      }, delayTime)
     } catch (error) {
       console.error('加载推荐酒店失败:', error)
       this.setState({ recommendHotels: [] })
@@ -107,9 +124,17 @@ export default class Index extends Component<{}, IndexState> {
 
   loadAllTags = async () => {
     try {
+      const startTime = Date.now()
       const tags = await hotelService.getAllTags()
       console.log('All tags loaded:', tags)
-      this.setState({ availableTags: tags || [] })
+
+      const elapsedTime = Date.now() - startTime
+      const minSkeletonTime = 800
+      const delayTime = Math.max(0, minSkeletonTime - elapsedTime)
+
+      setTimeout(() => {
+        this.setState({ availableTags: tags || [] })
+      }, delayTime)
     } catch (error) {
       console.error('加载标签失败:', error)
       this.setState({ availableTags: [] })
@@ -125,6 +150,9 @@ export default class Index extends Component<{}, IndexState> {
       Taro.redirectTo({
         url: `/pages/hotel/detail?id=${hotelId}&checkIn=${searchParams.checkIn}&checkOut=${searchParams.checkOut}`
       })
+      setTimeout(() => {
+        Taro.hideLoading()
+      }, 100)
     } else {
       Taro.showToast({
         title: '未找到关联酒店',
@@ -138,6 +166,9 @@ export default class Index extends Component<{}, IndexState> {
     Taro.redirectTo({
       url: `/pages/hotel/detail?id=${hotel.id}&checkIn=${searchParams.checkIn}&checkOut=${searchParams.checkOut}`
     })
+    setTimeout(() => {
+      Taro.hideLoading()
+    }, 100)
   }
 
   renderStars = (starLevel: number) => {
@@ -285,12 +316,15 @@ export default class Index extends Component<{}, IndexState> {
   }
 
   render() {
+    const { bannerList, recommendHotels, availableTags } = this.state
+    const isLoading = bannerList.length === 0 || recommendHotels.length === 0 || availableTags.length === 0
+
     return (
       <View className='index'>
         <View className='banner-section'>
-          {this.state.bannerList.length > 0 ? (
+          {bannerList.length > 0 ? (
             <Swiper className='banner-swiper' indicatorDots autoplay circular catchMove>
-              {this.state.bannerList.map((banner) => (
+              {bannerList.map((banner) => (
                 <SwiperItem key={banner.id}>
                   <View className='banner-item' onClick={() => this.handleBannerClick(banner)}>
                     {banner.coverImage && <Image className='banner-image' src={banner.coverImage} mode='aspectFill' lazyLoad />}
@@ -299,9 +333,13 @@ export default class Index extends Component<{}, IndexState> {
               ))}
             </Swiper>
           ) : (
-            <View className='banner-placeholder'>
-              <Text>暂无轮播图</Text>
-            </View>
+            isLoading ? (
+              <Skeleton type='banner' showContent={true} />
+            ) : (
+              <View className='banner-placeholder'>
+                <Text>暂无轮播图</Text>
+              </View>
+            )
           )}
         </View>
 
@@ -406,8 +444,8 @@ export default class Index extends Component<{}, IndexState> {
             </View>
           </View>
           <View className='hotel-list'>
-            {this.state.recommendHotels.length > 0 ? (
-              this.state.recommendHotels.map((hotel) => (
+            {recommendHotels.length > 0 ? (
+              recommendHotels.map((hotel) => (
                 <View key={hotel.id} className='hotel-card' onClick={() => this.handleHotelClick(hotel)}>
                   {hotel.coverImage && <Image className='hotel-cover' src={hotel.coverImage} mode='aspectFill' lazyLoad />}
                   <View className='hotel-content'>
@@ -433,6 +471,13 @@ export default class Index extends Component<{}, IndexState> {
                   </View>
                 </View>
               ))
+            ) : isLoading ? (
+              <>
+                <Skeleton type='card' showContent={true} />
+                <Skeleton type='card' showContent={true} />
+                <Skeleton type='card' showContent={true} />
+                <Skeleton type='card' showContent={true} />
+              </>
             ) : (
               <View className='empty-tip'>
                 <Text>暂无推荐酒店</Text>
