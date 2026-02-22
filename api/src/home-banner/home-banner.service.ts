@@ -76,7 +76,7 @@ export class HomeBannerService {
     });
     return banners.map(banner => ({
       ...banner,
-      coverImage: banner.coverImage ? `http://192.168.3.22:8888/upload/image/${banner.coverImage}` : null,
+      coverImage: banner.coverImage ? `http://localhost:8888/upload/image/${banner.coverImage}` : null,
       hotel: banner.hotel ? { ...banner.hotel, coverImage: undefined } : undefined
     }));
   }

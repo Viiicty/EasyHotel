@@ -28,6 +28,11 @@ export class HotelController {
     return this.hotelService.findAll();
   }
 
+  @Get('merchant')
+  async findByMerchant(@Request() req): Promise<HotelEntity[]> {
+    return this.hotelService.findByMerchant(req.user.id);
+  }
+
   @Get('merchant/:merchantId')
   async findByMerchantId(@Param('merchantId') merchantId: string): Promise<HotelEntity[]> {
     return this.hotelService.findByMerchantId(merchantId);
@@ -124,7 +129,9 @@ export class MiniHotelController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('checkIn') checkIn?: string,
-    @Query('checkOut') checkOut?: string
+    @Query('checkOut') checkOut?: string,
+    @Query('minPrice') minPrice?: string,
+    @Query('maxPrice') maxPrice?: string
   ): Promise<any[]> {
     return this.hotelService.searchMiniHotels({
       cityCode,
@@ -135,7 +142,9 @@ export class MiniHotelController {
       page: page ? parseInt(page) : 1,
       pageSize: pageSize ? parseInt(pageSize) : 10,
       checkIn,
-      checkOut
+      checkOut,
+      minPrice: minPrice ? parseFloat(minPrice) : undefined,
+      maxPrice: maxPrice ? parseFloat(maxPrice) : undefined
     });
   }
 
@@ -162,6 +171,27 @@ export class MiniHotelController {
   @Get('tags')           //获取所有可用的标签
   async getAllTags(): Promise<string[]> {
     return this.hotelService.getAllTags();
+  }
+
+  @Public()
+  @Get('location')
+  async getLocation(
+    @Query('location') location: string,
+    @Query('key') key: string
+  ): Promise<any> {
+    try {
+      const url = `https://restapi.amap.com/v3/geocode/regeo?output=json&location=${location}&key=${key}&radius=1000&extensions=base`
+      
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('逆地理编码错误:', error)
+      throw new Error('逆地理编码失败')
+    }
   }
 
   @Public()

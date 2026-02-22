@@ -1,6 +1,6 @@
 import Taro from '@tarojs/taro'
 
-const BASE_URL = 'http://192.168.3.22:8888'
+const BASE_URL = 'http://localhost:8888'
 
 const request = async (config: Taro.request.Option) => {
   try {
@@ -68,6 +68,13 @@ export interface RoomType {
   status: string
 }
 
+export interface HotelImage {
+  id: string
+  hotelId: string
+  url: string
+  sortNo: number
+}
+
 export interface Banner {
   id: string
   title?: string
@@ -132,11 +139,22 @@ export const hotelService = {
     pageSize?: number
     checkIn?: string
     checkOut?: string
+    minPrice?: number
+    maxPrice?: number
   }): Promise<Hotel[]> {
     try {
+      const cityMap: { [key: string]: string } = {
+        '北京': 'beijing',
+        '上海': 'shanghai',
+        '广州': 'guangzhou',
+        '深圳': 'shenzhen',
+        '杭州': 'hangzhou',
+        '成都': 'chengdu'
+      }
+      
       const queryParams: any = {}
       if (params.city) {
-        queryParams.cityCode = params.city
+        queryParams.cityCode = cityMap[params.city] || params.city
       }
       if (params.keyword) {
         queryParams.nameZh = params.keyword
@@ -158,6 +176,12 @@ export const hotelService = {
       }
       if (params.checkOut) {
         queryParams.checkOut = params.checkOut
+      }
+      if (params.minPrice !== undefined) {
+        queryParams.minPrice = params.minPrice
+      }
+      if (params.maxPrice !== undefined) {
+        queryParams.maxPrice = params.maxPrice
       }
 
       const res = await request({
@@ -248,6 +272,21 @@ export const hotelService = {
       return res.data.data || []
     } catch (error) {
       console.error('获取房型列表失败:', error)
+      return []
+    }
+  },
+
+  async getHotelImages(hotelId: string): Promise<HotelImage[]> {
+    try {
+      const res = await request({
+        url: `${BASE_URL}/hotel-image/hotel/${hotelId}`,
+        method: 'GET'
+      })
+      console.log('getHotelImages response:', res)
+      console.log('getHotelImages res.data:', res.data)
+      return res.data.data || []
+    } catch (error) {
+      console.error('获取酒店图片失败:', error)
       return []
     }
   }

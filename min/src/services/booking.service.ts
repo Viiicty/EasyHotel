@@ -1,7 +1,7 @@
 import Taro from '@tarojs/taro'
 import { userService } from './user.service'
 
-const BASE_URL = 'http://192.168.3.22:8888'
+const BASE_URL = 'http://localhost:8888'
 
 export const bookingService = {
   async checkInventory(params: {

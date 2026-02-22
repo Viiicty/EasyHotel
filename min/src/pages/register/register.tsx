@@ -192,7 +192,7 @@ export default class RegisterPage extends Component<{}, RegisterState> {
       Taro.showLoading({ title: '注册中...' })
 
       const res = await Taro.request({
-        url: 'http://192.168.3.22:8888/auth/mini/register',
+        url: 'http://localhost:8888/auth/mini/register',
         method: 'POST',
         data: {
           phone: phone,

@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './user/user.module';
 import { HotelModule } from './hotel/hotel.module';
+import { HotelImageModule } from './hotel-image/hotel-image.module';
 import { JwtAuthGuard } from './common/jwt-auth.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { RoomTypeModule } from './room-type/room-type.module';
@@ -29,6 +30,7 @@ import { QueueModule } from './queue/queue.module';
     }),
     UserModule,
     HotelModule,
+    HotelImageModule,
     RoomTypeModule,
     HotelSubmissionModule,
     RoomTypePriceDailyModule,

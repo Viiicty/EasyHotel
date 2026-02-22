@@ -1,3 +1,113 @@
+.hotel-index {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+
+  .content {
+    height: 100vh;
+  }
+}
+
+.hotel-detail-container {
+  position: relative;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+
+  .drawer-mask {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+
+    .drawer-panel {
+      width: 100%;
+      height: 40vh;
+      background-color: #fff;
+      border-radius: 24px 24px 0 0;
+      animation: slideUp 0.3s ease-out;
+
+      @keyframes slideUp {
+        from {
+          transform: translateY(100%);
+        }
+        to {
+          transform: translateY(0);
+        }
+      }
+
+      .drawer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 30px;
+        border-bottom: 1px solid #f0f0f0;
+
+        .drawer-title {
+          font-size: 32px;
+          color: #333;
+          font-weight: 500;
+        }
+
+        .drawer-close {
+          font-size: 40px;
+          color: #999;
+          padding: 10px;
+        }
+      }
+
+      .drawer-content {
+        padding: 30px;
+
+        .guest-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 30px;
+
+          .guest-label {
+            font-size: 28px;
+            color: #333;
+          }
+
+          .guest-picker {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+
+            .picker-arrow {
+              font-size: 20px;
+              color: #999;
+            }
+          }
+        }
+      }
+
+      .drawer-footer {
+        padding: 20px 30px;
+        border-top: 1px solid #f0f0f0;
+
+        .drawer-btn {
+          width: 100%;
+          height: 88px;
+          line-height: 88px;
+          background-color: #1890ff;
+          color: #fff;
+          font-size: 32px;
+          border: none;
+          border-radius: 12px;
+        }
+      }
+    }
+  }
+}
+
 .hotel-detail {
   min-height: 100vh;
   background-color: #f5f5f5;
@@ -21,6 +131,27 @@
     width: 100%;
     height: 400px;
     background-color: #f0f0f0;
+  }
+
+  .hotel-banner-container {
+    width: 100%;
+    height: 400px;
+    overflow: hidden;
+
+    .hotel-banner {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  .hotel-banner-swiper {
+    width: 100%;
+    height: 400px;
+
+    .hotel-banner {
+      width: 100%;
+      height: 100%;
+    }
   }
 
   .hotel-info-card {
@@ -355,105 +486,6 @@
       Text {
         font-size: 28px;
         color: #999;
-      }
-    }
-  }
-
-  .drawer-mask {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    display: flex;
-    align-items: flex-end;
-
-    .drawer-panel {
-      width: 100%;
-      background-color: #fff;
-      border-radius: 24px 24px 0 0;
-      animation: slideUp 0.3s ease-out;
-
-      @keyframes slideUp {
-        from {
-          transform: translateY(100%);
-        }
-        to {
-          transform: translateY(0);
-        }
-      }
-
-      .drawer-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 30px;
-        border-bottom: 1px solid #f0f0f0;
-
-        .drawer-title {
-          font-size: 32px;
-          color: #333;
-          font-weight: 500;
-        }
-
-        .drawer-close {
-          font-size: 40px;
-          color: #999;
-          padding: 10px;
-        }
-      }
-
-      .drawer-content {
-        padding: 30px;
-
-        .guest-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 30px;
-
-          &:last-child {
-            margin-bottom: 0;
-          }
-
-          .guest-label {
-            font-size: 32px;
-            color: #333;
-          }
-
-          .guest-picker {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 16px 24px;
-            background-color: #f5f5f5;
-            border-radius: 12px;
-            min-width: 240px;
-
-            .picker-arrow {
-              font-size: 24px;
-              color: #999;
-            }
-          }
-        }
-      }
-
-      .drawer-footer {
-        padding: 20px 30px;
-        border-top: 1px solid #f0f0f0;
-
-        .drawer-btn {
-          width: 100%;
-          height: 88px;
-          line-height: 88px;
-          background-color: #1890ff;
-          color: #fff;
-          font-size: 32px;
-          border: none;
-          border-radius: 12px;
-        }
       }
     }
   }

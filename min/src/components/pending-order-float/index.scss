@@ -1,0 +1,28 @@
+.pending-order-float {
+  position: fixed;
+  top: 100px;
+  right: 20px;
+  z-index: 99999;
+
+  .float-content {
+    background: #ff6b6b;
+    border-radius: 50px;
+    padding: 15px 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+
+    .float-text {
+      color: #fff;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .float-time {
+      color: #fff;
+      font-size: 20px;
+      font-weight: bold;
+    }
+  }
+}

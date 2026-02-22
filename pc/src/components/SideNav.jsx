@@ -36,7 +36,11 @@ function SideNav({ collapsed, onCollapse }) {
       children: [
         {
           key: '/merchant/hotel-info',
-          label: '酒店信息',
+          label: '录入新酒店',
+        },
+        {
+          key: '/merchant/hotel-manage',
+          label: '酒店管理',
         },
         {
           key: '/merchant/room-type',

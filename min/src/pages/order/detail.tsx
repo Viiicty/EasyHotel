@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { View, Text, ScrollView, Button } from '@tarojs/components'
+import { View, Text, ScrollView, Button, CoverView } from '@tarojs/components'
 import Taro, { getCurrentInstance } from '@tarojs/taro'
 import { orderService } from '../../services/order.service'
 import './index.scss'
@@ -49,10 +49,13 @@ export default class OrderDetailPage extends Component<{}, OrderDetailState> {
     try {
       this.setState({ loading: true })
       const order = await orderService.getOrderById(orderId)
-      this.setState({ order })
       
-      if (order.status === 'PAID') {
+      if (order.status === 'PENDING') {
+        const status = await orderService.getOrderStatus(orderId)
+        this.setState({ order, remainingTime: status.remainingTime })
         this.startCountdown()
+      } else {
+        this.setState({ order })
       }
     } catch (error) {
       console.error('加载订单详情失败:', error)
@@ -67,16 +70,12 @@ export default class OrderDetailPage extends Component<{}, OrderDetailState> {
 
   startCountdown = () => {
     this.countdownTimer = setInterval(async () => {
-      try {
-        const status = await orderService.getOrderStatus(this.state.orderId)
-        this.setState({ remainingTime: status.remainingTime })
-        
-        if (status.remainingTime <= 0) {
-          clearInterval(this.countdownTimer)
-          this.loadOrderDetail(this.state.orderId)
-        }
-      } catch (error) {
-        console.error('获取订单状态失败:', error)
+      const { remainingTime } = this.state
+      if (remainingTime > 0) {
+        this.setState({ remainingTime: remainingTime - 1 })
+      } else {
+        clearInterval(this.countdownTimer)
+        await this.loadOrderDetail(this.state.orderId)
       }
     }, 1000)
   }
@@ -98,6 +97,28 @@ export default class OrderDetailPage extends Component<{}, OrderDetailState> {
       console.error('确认订单失败:', error)
       Taro.showToast({
         title: error.message || '确认失败',
+        icon: 'none'
+      })
+    }
+  }
+
+  handlePayOrder = async () => {
+    try {
+      Taro.showLoading({ title: '支付中...' })
+      await orderService.payOrder(this.state.orderId)
+      Taro.hideLoading()
+      
+      Taro.showToast({
+        title: '支付成功',
+        icon: 'success'
+      })
+      
+      this.loadOrderDetail(this.state.orderId)
+    } catch (error) {
+      Taro.hideLoading()
+      console.error('支付失败:', error)
+      Taro.showToast({
+        title: error.message || '支付失败',
         icon: 'none'
       })
     }
@@ -281,22 +302,22 @@ export default class OrderDetailPage extends Component<{}, OrderDetailState> {
               order.priceDetail.map((item: any, index: number) => (
                 <View key={index} className='price-row'>
                   <Text className='price-date'>{item.date}</Text>
-                  <Text className='price-value'>¥{item.price}</Text>
+                  <Text className='price-value'>¥{Math.round(parseFloat(item.price || 0))}</Text>
                 </View>
               ))
             ) : (
               <View className='price-row'>
                 <Text className='price-date'>总价</Text>
-                <Text className='price-value'>¥{order.totalAmount || 0}</Text>
+                <Text className='price-value'>¥{Math.round(parseFloat(order.totalAmount || 0))}</Text>
               </View>
             )}
             <View className='total-row'>
               <Text className='total-label'>订单总价</Text>
-              <Text className='total-value'>¥{order.totalAmount || 0}</Text>
+              <Text className='total-value'>¥{Math.round(parseFloat(order.totalAmount || 0))}</Text>
             </View>
           </View>
 
-          {order.status === 'PAID' && remainingTime > 0 && (
+          {order.status === 'PENDING' && remainingTime > 0 && (
             <View className='countdown-section'>
               <Text className='countdown-text'>
                 剩余时间：{this.formatCountdown(remainingTime)}
@@ -322,13 +343,13 @@ export default class OrderDetailPage extends Component<{}, OrderDetailState> {
         </ScrollView>
 
         <View className='order-actions'>
-          {order.status === 'PAID' && (
+          {order.status === 'PENDING' && (
             <>
               <Button 
-                className='action-btn confirm-btn' 
-                onClick={this.handleConfirmOrder}
+                className='action-btn pay-btn' 
+                onClick={this.handlePayOrder}
               >
-                确认订单
+                支付
               </Button>
               <Button 
                 className='action-btn cancel-btn' 
@@ -338,7 +359,15 @@ export default class OrderDetailPage extends Component<{}, OrderDetailState> {
               </Button>
             </>
           )}
-          {(order.status === 'CANCELLED' || order.status === 'COMPLETED') && (
+          {order.status === 'PAID' && (
+            <Button 
+              className='action-btn cancel-btn' 
+              onClick={this.handleCancelOrder}
+            >
+              取消订单
+            </Button>
+          )}
+          {order.status === 'CANCELLED' && (
             <Button 
               className='action-btn delete-btn' 
               onClick={this.handleDeleteOrder}

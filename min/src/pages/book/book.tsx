@@ -279,14 +279,18 @@ export default class BookingPage extends Component<{}, BookingState> {
 
       Taro.showModal({
         title: '订单已创建',
-        content: '订单号：' + result.orderNo + '\n请在15分钟内完成支付',
+        content: '订单号：' + result.orderNo + '\n请在5分钟内完成支付',
         confirmText: '去支付',
         cancelText: '稍后支付',
         success: (res) => {
           if (res.confirm) {
-            this.handleMockPayment()
+            Taro.navigateTo({
+              url: `/pages/order/detail?orderId=${this.state.orderId}`
+            })
           } else {
-            Taro.navigateBack()
+            Taro.navigateTo({
+              url: `/pages/order/detail?orderId=${this.state.orderId}`
+            })
           }
         }
       })
@@ -298,32 +302,6 @@ export default class BookingPage extends Component<{}, BookingState> {
         icon: 'none'
       })
       this.setState({ submitting: false })
-    }
-  }
-
-  handleMockPayment = async () => {
-    try {
-      Taro.showLoading({ title: '支付中...' })
-      const result = await bookingService.mockPayment({
-        orderId: this.state.orderId
-      })
-      Taro.hideLoading()
-
-      Taro.showToast({
-        title: '支付成功',
-        icon: 'success'
-      })
-
-      Taro.navigateTo({
-        url: `/pages/order/detail?orderId=${this.state.orderId}`
-      })
-    } catch (error) {
-      Taro.hideLoading()
-      console.error('支付失败:', error)
-      Taro.showToast({
-        title: error.message || '支付失败',
-        icon: 'none'
-      })
     }
   }
 
@@ -402,7 +380,7 @@ export default class BookingPage extends Component<{}, BookingState> {
                   <Text className='room-info-separator'>|</Text>
                   <Text className='room-info-item'>
                     {roomType?.areaSqm !== undefined && roomType?.areaSqm !== null 
-                      ? parseFloat(roomType.areaSqm).toFixed(1) 
+                      ? Math.round(parseFloat(roomType.areaSqm))
                       : ''}㎡
                   </Text>
                   <Text className='room-info-separator'>|</Text>
@@ -478,7 +456,7 @@ export default class BookingPage extends Component<{}, BookingState> {
         <View className='booking-footer'>
           <View className='footer-price'>
             <Text className='price-label'>支付总价</Text>
-            <Text className='price-value'>¥{totalPrice}</Text>
+            <Text className='price-value'>¥{Math.round(parseFloat(totalPrice))}</Text>
           </View>
           <Button
             className='submit-button'

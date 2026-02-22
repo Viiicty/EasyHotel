@@ -102,6 +102,13 @@ export class HotelService {
     return this.hotelRepository.find({ where: { merchantId } });
   }
 
+  async findByMerchant(merchantId: string): Promise<HotelEntity[]> {
+    return this.hotelRepository.find({ 
+      where: { merchantId, available: 'UP' },
+      order: { createdTime: 'DESC' }
+    });
+  }
+
   async findByCityCode(cityCode: string): Promise<HotelEntity[]> {
     return this.hotelRepository.find({ where: { cityCode } });
   }
@@ -203,7 +210,7 @@ export class HotelService {
 
     const bannerMap = new Map();
     banners.forEach(banner => {
-      bannerMap.set(banner.hotel_id, `http://192.168.3.22:8888/upload/image/${banner.coverImage}`);
+      bannerMap.set(banner.hotel_id, `http://localhost:8888/upload/image/${banner.coverImage}`);
     });
 
     const defaultCoverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
@@ -309,7 +316,7 @@ export class HotelService {
 
     let coverImage = null;
     if (banner && banner.length > 0 && banner[0].coverImage) {
-      coverImage = `http://192.168.3.22:8888/upload/image/${banner[0].coverImage}`;
+      coverImage = `http://localhost:8888/upload/image/${banner[0].coverImage}`;
     } else {
       coverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
     }
@@ -346,7 +353,12 @@ export class HotelService {
     pageSize?: number
     checkIn?: string
     checkOut?: string
+    minPrice?: number
+    maxPrice?: number
   }): Promise<any[]> {
+    console.log('=== searchMiniHotels 开始 ===');
+    console.log('请求参数:', JSON.stringify(params, null, 2));
+
     const query = this.hotelRepository
       .createQueryBuilder('hotel')
       .select([
@@ -373,10 +385,12 @@ export class HotelService {
 
     if (params.cityCode) {
       query.andWhere('hotel.cityCode = :cityCode', { cityCode: params.cityCode });
+      console.log('添加城市筛选:', params.cityCode);
     }
 
     if (params.nameZh) {
       query.andWhere('hotel.nameZh LIKE :nameZh', { nameZh: `%${params.nameZh}%` });
+      console.log('添加名称筛选:', params.nameZh);
     }
 
     if (params.nameEn) {
@@ -385,6 +399,7 @@ export class HotelService {
 
     if (params.starLevel) {
       query.andWhere('hotel.starLevel <= :starLevel', { starLevel: params.starLevel });
+      console.log('添加星级筛选:', params.starLevel);
     }
 
     if (params.tags && params.tags.length > 0) {
@@ -394,6 +409,7 @@ export class HotelService {
         tagParams[`tag${index}`] = `"${tag}"`;
       });
       query.andWhere(`(${tagConditions})`, tagParams);
+      console.log('添加标签筛选:', params.tags);
     }
 
     const page = params.page || 1;
@@ -402,54 +418,230 @@ export class HotelService {
 
     query.skip(skip).take(pageSize);
 
-    const hotels = await query.getMany();
+    console.log('执行基础查询...');
+    let hotels = await query.getMany();
+    console.log('基础查询结果数量:', hotels.length);
 
-    const hotelIds = hotels.map(hotel => hotel.id);
-    const banners = await this.dataSource.query(
-      'SELECT * FROM home_banner WHERE hotel_id = ANY($1) ORDER BY "sortNo" ASC',
-      [hotelIds]
-    );
+    const { RoomTypeInventoryDailyEntity } = await import('../inventory/room-type-inventory-daily.entity');
+    const inventoryRepository = this.dataSource.getRepository(RoomTypeInventoryDailyEntity);
 
-    const bannerMap = new Map();
-    banners.forEach(banner => {
-      bannerMap.set(banner.hotel_id, `http://192.168.3.22:8888/upload/image/${banner.coverImage}`);
-    });
-
-    const defaultCoverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
+    const { RoomTypePriceDailyEntity } = await import('../room-type-price-daily/room-type-price-daily.entity');
+    const priceRepository = this.dataSource.getRepository(RoomTypePriceDailyEntity);
 
     const { RoomTypeEntity } = await import('../room-type/room-type.entity');
     const roomTypeRepository = this.dataSource.getRepository(RoomTypeEntity);
 
-    const roomTypes = await roomTypeRepository
-      .createQueryBuilder('rt')
-      .select(['rt.hotelId', 'rt.id', 'rt.name', 'rt.status', 'rt.defaultPrice'])
-      .where('rt.hotelId IN (:...hotelIds)', { hotelIds })
-      .andWhere('rt.status = :status', { status: 'APPROVED' })
-      .getMany();
-
-    console.log('Room types from TypeORM:', roomTypes);
-
-    let dailyPrices: any[] = []
-    let nights = 1
-
     if (params.checkIn && params.checkOut) {
-      const checkInDate = new Date(params.checkIn)
-      const checkOutDate = new Date(params.checkOut)
-      nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
-      console.log('入住天数:', nights)
+      console.log('开始库存筛选...');
+      try {
+        const checkInDate = new Date(params.checkIn);
+        const checkOutDate = new Date(params.checkOut);
+        const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
 
-      const { RoomTypePriceDailyEntity } = await import('../room-type-price-daily/room-type-price-daily.entity');
-      const priceRepository = this.dataSource.getRepository(RoomTypePriceDailyEntity);
+        const dateList: string[] = [];
+        const currentDate = new Date(checkInDate);
+        while (currentDate < checkOutDate) {
+          dateList.push(currentDate.toISOString().split('T')[0]);
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
 
-      dailyPrices = await priceRepository
-        .createQueryBuilder('p')
-        .select(['p.roomTypeId', 'p.date', 'p.price'])
-        .where('p.date >= :checkIn', { checkIn: params.checkIn })
-        .andWhere('p.date < :checkOut', { checkOut: params.checkOut })
-        .andWhere('p.roomTypeId IN (:...roomTypeIds)', { roomTypeIds: roomTypes.map(rt => rt.id) })
+        console.log('日期列表:', dateList);
+
+        if (dateList.length > 0) {
+          const roomTypes = await roomTypeRepository
+            .createQueryBuilder('rt')
+            .select(['rt.id', 'rt.hotelId'])
+            .where('rt.status = :status', { status: 'APPROVED' })
+            .getMany();
+
+          console.log('找到房型数量:', roomTypes.length);
+
+          const roomTypeIds = roomTypes.map(rt => rt.id);
+          const hotelIdFromRoomTypeMap = new Map();
+          roomTypes.forEach(rt => hotelIdFromRoomTypeMap.set(rt.id, rt.hotelId));
+
+          if (roomTypeIds.length > 0) {
+            const inventoryQuery = inventoryRepository
+              .createQueryBuilder('inv')
+              .select(['inv.roomTypeId', 'inv.date', 'inv.totalQty', 'inv.usedQty', 'inv.holdQty'])
+              .where('inv.date IN (:...dates)', { dates: dateList })
+              .andWhere('inv.roomTypeId IN (:...roomTypeIds)', { roomTypeIds });
+
+            const inventories = await inventoryQuery.getMany();
+            console.log('找到库存记录数量:', inventories.length);
+
+            const roomTypeInventoryMap = new Map();
+            inventories.forEach(inv => {
+              if (!roomTypeInventoryMap.has(inv.roomTypeId)) {
+                roomTypeInventoryMap.set(inv.roomTypeId, new Map());
+              }
+              roomTypeInventoryMap.get(inv.roomTypeId)!.set(inv.date, inv);
+            });
+
+            const validRoomTypeIds: string[] = [];
+            roomTypeIds.forEach(roomTypeId => {
+              const inventoryMap = roomTypeInventoryMap.get(roomTypeId);
+              if (!inventoryMap) return;
+
+              let hasInventoryEveryDay = true;
+              for (const date of dateList) {
+                const inv = inventoryMap.get(date);
+                if (!inv) {
+                  hasInventoryEveryDay = false;
+                  break;
+                }
+                const remaining = (inv.totalQty || 0) - (inv.usedQty || 0) - (inv.holdQty || 0);
+                if (remaining <= 0) {
+                  hasInventoryEveryDay = false;
+                  break;
+                }
+              }
+
+              if (hasInventoryEveryDay) {
+                validRoomTypeIds.push(roomTypeId);
+              }
+            });
+
+            console.log('有效房型数量:', validRoomTypeIds.length);
+
+            const validHotelIds = new Set(validRoomTypeIds.map(rtId => hotelIdFromRoomTypeMap.get(rtId)));
+            console.log('有效酒店ID数量:', validHotelIds.size);
+            
+            // 只筛选基础查询结果中的酒店，确保满足所有搜索条件的交集
+            hotels = hotels.filter(h => validHotelIds.has(h.id));
+            console.log('库存筛选后剩余酒店数量:', hotels.length);
+          }
+        }
+      } catch (error) {
+        console.error('库存筛选出错:', error);
+      }
+    }
+
+    if (params.minPrice !== undefined || params.maxPrice !== undefined) {
+      console.log('开始价格筛选...');
+      try {
+        let priceCheckStart = params.checkIn;
+        let priceCheckEnd = params.checkOut;
+        
+        if (!priceCheckStart || !priceCheckEnd) {
+          const today = new Date();
+          priceCheckStart = today.toISOString().split('T')[0];
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          priceCheckEnd = tomorrow.toISOString().split('T')[0];
+        }
+
+        console.log('价格检查日期范围:', priceCheckStart, '-', priceCheckEnd);
+
+        const priceQuery = priceRepository
+          .createQueryBuilder('p')
+          .select(['p.roomTypeId', 'p.date', 'p.price'])
+          .where('p.date >= :checkIn', { checkIn: priceCheckStart })
+          .andWhere('p.date < :checkOut', { checkOut: priceCheckEnd });
+
+        const allPrices = await priceQuery.getMany();
+        console.log('找到价格记录数量:', allPrices.length);
+
+        const roomTypePriceMap = new Map();
+        allPrices.forEach(p => {
+          if (!roomTypePriceMap.has(p.roomTypeId)) {
+            roomTypePriceMap.set(p.roomTypeId, []);
+          }
+          roomTypePriceMap.get(p.roomTypeId)!.push(p.price);
+        });
+
+        const roomTypes = await roomTypeRepository
+          .createQueryBuilder('rt')
+          .select(['rt.id', 'rt.hotelId', 'rt.defaultPrice'])
+          .where('rt.status = :status', { status: 'APPROVED' })
+          .getMany();
+
+        console.log('找到房型数量:', roomTypes.length);
+
+        const validRoomTypeIds: string[] = [];
+        roomTypes.forEach(rt => {
+          const priceList = roomTypePriceMap.get(rt.id) || [];
+          const prices = priceList.length > 0 ? priceList : [rt.defaultPrice || 0];
+          const validPrices = prices.filter(p => p > 0);
+          if (validPrices.length > 0) {
+            const minRoomTypePrice = Math.min(...validPrices);
+            
+            if (minRoomTypePrice > 0) {
+              let inRange = true;
+              if (params.minPrice !== undefined && minRoomTypePrice < params.minPrice) {
+                inRange = false;
+              }
+              if (params.maxPrice !== undefined && minRoomTypePrice > params.maxPrice) {
+                inRange = false;
+              }
+              if (inRange) {
+                validRoomTypeIds.push(rt.id);
+              }
+            }
+          }
+        });
+
+        console.log('价格筛选后有效房型数量:', validRoomTypeIds.length);
+        console.log('价格范围:', params.minPrice, '-', params.maxPrice);
+
+        const validHotelIds = new Set(validRoomTypeIds.map(rtId => roomTypes.find(rt => rt.id === rtId)?.hotelId));
+        console.log('价格筛选后有效酒店ID数量:', validHotelIds.size);
+        hotels = hotels.filter(h => validHotelIds.has(h.id));
+        console.log('价格筛选后剩余酒店数量:', hotels.length);
+      } catch (error) {
+        console.error('价格筛选出错:', error);
+      }
+    }
+
+    console.log('=== searchMiniHotels 结束，最终返回酒店数量:', hotels.length, '===');
+
+
+    const hotelIds = hotels.map(hotel => hotel.id);
+    let banners: any[] = [];
+    let roomTypes: any[] = [];
+    let dailyPrices: any[] = [];
+    let nights = 1;
+
+    const defaultCoverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
+    const bannerMap = new Map();
+
+    if (hotelIds.length > 0) {
+      banners = await this.dataSource.query(
+        'SELECT * FROM home_banner WHERE hotel_id = ANY($1) ORDER BY "sortNo" ASC',
+        [hotelIds]
+      );
+
+      banners.forEach(banner => {
+        bannerMap.set(banner.hotel_id, `http://localhost:8888/upload/image/${banner.coverImage}`);
+      });
+
+      roomTypes = await roomTypeRepository
+        .createQueryBuilder('rt')
+        .select(['rt.hotelId', 'rt.id', 'rt.name', 'rt.status', 'rt.defaultPrice'])
+        .where('rt.hotelId IN (:...hotelIds)', { hotelIds })
+        .andWhere('rt.status = :status', { status: 'APPROVED' })
         .getMany();
 
-      console.log('Daily prices:', dailyPrices);
+      console.log('Room types from TypeORM:', roomTypes);
+
+      if (params.checkIn && params.checkOut) {
+        const checkInDate = new Date(params.checkIn)
+        const checkOutDate = new Date(params.checkOut)
+        nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
+        console.log('入住天数:', nights)
+
+        const { RoomTypePriceDailyEntity } = await import('../room-type-price-daily/room-type-price-daily.entity');
+
+        dailyPrices = await priceRepository
+          .createQueryBuilder('p')
+          .select(['p.roomTypeId', 'p.date', 'p.price'])
+          .where('p.date >= :checkIn', { checkIn: params.checkIn })
+          .andWhere('p.date < :checkOut', { checkOut: params.checkOut })
+          .andWhere('p.roomTypeId IN (:...roomTypeIds)', { roomTypeIds: roomTypes.map(rt => rt.id) })
+          .getMany();
+
+        console.log('Daily prices:', dailyPrices);
+      }
     }
 
     const priceMap = new Map();
@@ -554,7 +746,7 @@ export class HotelService {
 
     const bannerMap = new Map();
     banners.forEach(banner => {
-      bannerMap.set(banner.hotel_id, `http://192.168.3.22:8888/upload/image/${banner.coverImage}`);
+      bannerMap.set(banner.hotel_id, `http://localhost:8888/upload/image/${banner.coverImage}`);
     });
 
     const defaultCoverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';

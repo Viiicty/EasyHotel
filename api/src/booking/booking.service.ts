@@ -310,7 +310,7 @@ export class BookingService {
       }
 
       const holdToken = uuidv4();
-      const expireAt = new Date(Date.now() + 1 * 60 * 1000);
+      const expireAt = new Date(Date.now() + 5 * 60 * 1000);
 
       const hold = queryRunner.manager.create(InventoryHoldEntity, {
         hotelId,
@@ -373,7 +373,7 @@ export class BookingService {
 
       await queryRunner.commitTransaction();
 
-      const delayMs = 60 * 1000;
+      const delayMs = 5 * 60 * 1000;
       await this.orderExpiryQueue.addExpiryJob(savedOrder.id, delayMs);
 
       return {

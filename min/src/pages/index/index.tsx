@@ -2,6 +2,8 @@ import React, { Component } from 'react'
 import { View, Text, Swiper, SwiperItem, Picker, Input, Image, ScrollView, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { hotelService, Banner, Hotel } from '../../services/hotel.service'
+import { orderService } from '../../services/order.service'
+import { userService } from '../../services/user.service'
 import Calendar from '../../components/calendar/calendar'
 import Skeleton from '../../components/skeleton/skeleton'
 import './index.scss'
@@ -11,14 +13,10 @@ interface SearchParams {
   hotelName: string
   checkIn: string
   checkOut: string
-  priceRange: number[]
+  minPrice: number
+  maxPrice: number
   starLevel: number
   tags: string[]
-}
-
-interface PriceRange {
-  label: string
-  value: number[]
 }
 
 interface StarLevel {
@@ -29,35 +27,58 @@ interface StarLevel {
 interface IndexState {
   bannerList: Banner[]
   searchParams: SearchParams
-  priceRanges: PriceRange[]
   starLevels: StarLevel[]
   availableTags: string[]
   recommendHotels: Hotel[]
   loading: boolean
   showCalendar: boolean
   calendarType: 'checkIn' | 'checkOut'
+  pendingOrder: any
+  remainingTime: number
+  showPriceModal: boolean
+  showStarModal: boolean
+  tempMinPrice: string
+  tempMaxPrice: string
+  locating: boolean
+  locationBubble: {
+    visible: boolean
+    city: string
+    address: string
+  }
 }
 
 export default class Index extends Component<{}, IndexState> {
+  countdownTimer: any = null
+
+  getTodayDate = () => {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  getTomorrowDate = () => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const year = tomorrow.getFullYear()
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0')
+    const day = String(tomorrow.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
   state = {
     bannerList: [],
     searchParams: {
       city: '',
       hotelName: '',
-      checkIn: '2026-02-10',
-      checkOut: '2026-02-11',
-      priceRange: [0, 1000],
+      checkIn: this.getTodayDate(),
+      checkOut: this.getTomorrowDate(),
+      minPrice: 0,
+      maxPrice: 2000,
       starLevel: 0,
       tags: []
     },
-    priceRanges: [
-      { label: '不限', value: [0, 9999] },
-      { label: '0-300元', value: [0, 300] },
-      { label: '300-500元', value: [300, 500] },
-      { label: '500-800元', value: [500, 800] },
-      { label: '800-1000元', value: [800, 1000] },
-      { label: '1000元以上', value: [1000, 9999] }
-    ],
     starLevels: [
       { label: '不限', value: 0 },
       { label: '三星级', value: 3 },
@@ -69,16 +90,52 @@ export default class Index extends Component<{}, IndexState> {
     recommendHotels: [],
     loading: false,
     showCalendar: false,
-    calendarType: 'checkIn'
+    calendarType: 'checkIn',
+    pendingOrder: null,
+    remainingTime: 0,
+    showPriceModal: false,
+    showStarModal: false,
+    tempMinPrice: '0',
+    tempMaxPrice: '2000',
+    locating: false,
+    locationBubble: {
+      visible: false,
+      city: '',
+      address: ''
+    }
+  }
+
+  cityPinyinMap: { [key: string]: string } = {
+    '北京': 'beijing',
+    '上海': 'shanghai',
+    '广州': 'guangzhou',
+    '深圳': 'shenzhen',
+    '杭州': 'hangzhou',
+    '成都': 'chengdu'
   }
 
   componentDidShow() {
     this.loadBanners()
     this.loadRecommendHotels()
     this.loadAllTags()
+    this.loadPendingOrder()
+    
+    const savedCheckIn = Taro.getStorageSync('selectedCheckIn')
+    const savedCheckOut = Taro.getStorageSync('selectedCheckOut')
+    if (savedCheckIn && savedCheckOut) {
+      this.setState(prevState => ({
+        searchParams: {
+          ...prevState.searchParams,
+          checkIn: savedCheckIn,
+          checkOut: savedCheckOut
+        }
+      }))
+    }
   }
 
-  componentDidHide() {}
+  componentDidHide() {
+    this.stopCountdown()
+  }
 
   loadBanners = async () => {
     try {
@@ -138,6 +195,66 @@ export default class Index extends Component<{}, IndexState> {
     } catch (error) {
       console.error('加载标签失败:', error)
       this.setState({ availableTags: [] })
+    }
+  }
+
+  loadPendingOrder = async () => {
+    if (!userService.isLoggedIn()) {
+      this.setState({ pendingOrder: null, remainingTime: 0 }, () => {
+        this.startCountdown()
+      })
+      return
+    }
+
+    try {
+      const order = await orderService.getPendingOrder()
+      console.log('=== loadPendingOrder ===')
+      console.log('order:', order)
+      this.setState({ 
+        pendingOrder: order,
+        remainingTime: order?.remainingTime || 0
+      }, () => {
+        this.startCountdown()
+      })
+    } catch (error) {
+      console.error('加载待支付订单失败:', error)
+      this.setState({ pendingOrder: null, remainingTime: 0 }, () => {
+        this.startCountdown()
+      })
+    }
+  }
+
+  startCountdown = () => {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer)
+    }
+
+    const { remainingTime } = this.state
+    if (remainingTime <= 0) {
+      return
+    }
+
+    this.countdownTimer = setInterval(() => {
+      this.setState(prevState => {
+        const newRemainingTime = prevState.remainingTime - 1
+        if (newRemainingTime > 0) {
+          return { remainingTime: newRemainingTime }
+        } else {
+          clearInterval(this.countdownTimer)
+          this.countdownTimer = null
+          setTimeout(() => {
+            this.loadPendingOrder()
+          }, 100)
+          return { remainingTime: 0 }
+        }
+      })
+    }, 1000)
+  }
+
+  stopCountdown = () => {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer)
+      this.countdownTimer = null
     }
   }
 
@@ -207,21 +324,142 @@ export default class Index extends Component<{}, IndexState> {
     })
   }
 
+  handleLocationClick = async () => {
+    console.log('=== 开始定位流程 ===')
+    
+    try {
+      console.log('1. 获取用户设置')
+      const setting = await Taro.getSetting()
+      console.log('用户设置:', setting)
+      console.log('定位权限状态:', setting.authSetting['scope.userLocation'])
+
+      if (setting.authSetting['scope.userLocation'] === false) {
+        console.log('2. 用户之前拒绝过授权，引导到设置')
+        Taro.showModal({
+          title: '提示',
+          content: '需要获取您的位置信息来推荐附近酒店，请在设置中开启定位权限',
+          confirmText: '去设置',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              Taro.openSetting()
+            }
+          }
+        })
+        this.setState({ locating: false })
+        return
+      }
+
+      console.log('2. 直接获取位置（会自动触发授权）')
+      this.setState({ locating: true })
+
+      const res = await Taro.getLocation({
+        type: 'wgs84'
+      })
+      console.log('位置获取成功:', res)
+      console.log('经纬度:', { latitude: res.latitude, longitude: res.longitude })
+
+      const { latitude, longitude } = res
+      this.reverseGeocode(latitude, longitude)
+    } catch (err) {
+      console.error('=== 定位流程失败 ===')
+      console.error('错误信息:', err)
+      console.error('错误详情:', JSON.stringify(err))
+      
+      if (err.errMsg && err.errMsg.includes('no permission')) {
+        console.log('错误类型: 无权限')
+        Taro.showModal({
+          title: '提示',
+          content: '需要获取您的位置信息来推荐附近酒店，请在设置中开启定位权限',
+          confirmText: '去设置',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              Taro.openSetting()
+            }
+          }
+        })
+      } else if (err.errMsg && err.errMsg.includes('authorize:fail')) {
+        console.log('错误类型: 授权失败')
+        Taro.showToast({
+          title: '授权失败，请重试',
+          icon: 'none'
+        })
+      } else {
+        console.log('错误类型: 其他错误')
+        Taro.showToast({
+          title: '定位失败，请检查定位权限',
+          icon: 'none'
+        })
+      }
+      
+      this.setState({ locating: false })
+    }
+  }
+
+  reverseGeocode = (latitude: number, longitude: number) => {
+    const BASE_URL = 'http://localhost:8888'
+    const AMAP_KEY = 'cbb0e9da5dc2bd7edb1d5cb63af8e039'
+    const url = `${BASE_URL}/mini/hotel/location?location=${longitude},${latitude}&key=${AMAP_KEY}`
+
+    Taro.request({
+      url: url,
+      method: 'GET'
+    }).then(res => {
+      if (res.statusCode === 200 && res.data.code === 200 && res.data.data.status === '1') {
+        const result = res.data.data.regeocode
+        const addressComponent = result.addressComponent
+        const province = addressComponent.province
+        const city = (addressComponent.city && addressComponent.city.length > 0) ? addressComponent.city : addressComponent.province
+        const district = addressComponent.district
+        const township = addressComponent.township
+        const street = addressComponent.streetNumber && addressComponent.street ? `${addressComponent.street}${addressComponent.streetNumber}` : addressComponent.street
+        const formattedAddress = result.formatted_address
+
+        const cityPinyin = this.cityPinyinMap[city] || city.toLowerCase()
+
+        const isDirectCity = province === city
+        const displayAddress = isDirectCity 
+          ? `${city}，${district}` 
+          : `${province}，${city}，${district}`
+
+        this.setState({
+          searchParams: {
+            ...this.state.searchParams,
+            city: cityPinyin
+          },
+          locationBubble: {
+            visible: true,
+            city: city,
+            address: displayAddress
+          },
+          locating: false
+        })
+
+        setTimeout(() => {
+          this.setState(prevState => ({
+            locationBubble: {
+              ...prevState.locationBubble,
+              visible: false
+            }
+          }))
+        }, 30000)
+      } else {
+        throw new Error('逆地理编码失败')
+      }
+    }).catch(err => {
+      console.error('逆地理编码失败:', err)
+      Taro.showToast({
+        title: '获取位置信息失败',
+        icon: 'none'
+      })
+      this.setState({ locating: false })
+    })
+  }
+
   handleHotelNameChange = (e) => {
     this.setState({
       searchParams: {
         ...this.state.searchParams,
         hotelName: e.detail.value
-      }
-    })
-  }
-
-  handlePriceChange = (e) => {
-    const selectedPrice = this.state.priceRanges[e.detail.value]
-    this.setState({
-      searchParams: {
-        ...this.state.searchParams,
-        priceRange: selectedPrice.value
       }
     })
   }
@@ -249,6 +487,59 @@ export default class Index extends Component<{}, IndexState> {
     })
   }
 
+  handlePriceClick = () => {
+    this.setState({ 
+      showPriceModal: true,
+      tempMinPrice: this.state.searchParams.minPrice.toString(),
+      tempMaxPrice: this.state.searchParams.maxPrice.toString()
+    })
+  }
+
+  handlePriceConfirm = () => {
+    const { tempMinPrice, tempMaxPrice } = this.state
+    this.setState({ 
+      showPriceModal: false,
+      searchParams: {
+        ...this.state.searchParams,
+        minPrice: tempMinPrice === '' ? 0 : parseInt(tempMinPrice) || 0,
+        maxPrice: tempMaxPrice === '' ? 0 : parseInt(tempMaxPrice) || 0
+      }
+    })
+  }
+
+  handlePriceCancel = () => {
+    this.setState({ showPriceModal: false })
+  }
+
+  handleMinPriceChange = (e) => {
+    this.setState({ tempMinPrice: e.detail.value })
+  }
+
+  handleMaxPriceChange = (e) => {
+    this.setState({ tempMaxPrice: e.detail.value })
+  }
+
+  handleStarClick = () => {
+    this.setState({ showStarModal: true })
+  }
+
+  handleStarConfirm = () => {
+    this.setState({ showStarModal: false })
+  }
+
+  handleStarCancel = () => {
+    this.setState({ showStarModal: false })
+  }
+
+  handleStarSelect = (starLevel) => {
+    this.setState(prevState => ({
+      searchParams: {
+        ...prevState.searchParams,
+        starLevel: starLevel
+      }
+    }))
+  }
+
   handleCheckInClick = () => {
     this.setState({ showCalendar: true, calendarType: 'checkIn' })
   }
@@ -270,6 +561,21 @@ export default class Index extends Component<{}, IndexState> {
 
   handleCalendarClose = () => {
     this.setState({ showCalendar: false })
+  }
+
+  formatCountdown = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${minutes}:${secs.toString().padStart(2, '0')}`
+  }
+
+  handlePendingBannerClick = () => {
+    const { pendingOrder } = this.state
+    if (pendingOrder && pendingOrder.orderId) {
+      Taro.navigateTo({
+        url: `/pages/order/detail?orderId=${pendingOrder.orderId}`
+      })
+    }
   }
 
   formatDateDisplay = (dateStr: string): string => {
@@ -295,7 +601,9 @@ export default class Index extends Component<{}, IndexState> {
         starLevel: searchParams.starLevel > 0 ? searchParams.starLevel : undefined,
         tags: searchParams.tags,
         checkIn: searchParams.checkIn,
-        checkOut: searchParams.checkOut
+        checkOut: searchParams.checkOut,
+        minPrice: searchParams.minPrice > 0 ? searchParams.minPrice : undefined,
+        maxPrice: searchParams.maxPrice < 2000 ? searchParams.maxPrice : undefined
       })
 
       Taro.hideToast()
@@ -315,12 +623,19 @@ export default class Index extends Component<{}, IndexState> {
     }
   }
 
+
+
   render() {
-    const { bannerList, recommendHotels, availableTags } = this.state
+    const { bannerList, recommendHotels, availableTags, pendingOrder, remainingTime, searchParams, showPriceModal, showStarModal, locationBubble } = this.state
     const isLoading = bannerList.length === 0 || recommendHotels.length === 0 || availableTags.length === 0
 
     return (
       <View className='index'>
+        {locationBubble.visible && (
+          <View className='location-bubble'>
+            <Text className='bubble-text'>📍{locationBubble.address}</Text>
+          </View>
+        )}
         <View className='banner-section'>
           {bannerList.length > 0 ? (
             <Swiper className='banner-swiper' indicatorDots autoplay circular catchMove>
@@ -343,30 +658,44 @@ export default class Index extends Component<{}, IndexState> {
           )}
         </View>
 
+        {pendingOrder && remainingTime > 0 && (
+          <View className='pending-banner' onClick={() => this.handlePendingBannerClick()}>
+            <Text className='banner-text'>您有一笔待支付的行程订单 倒计时</Text>
+            <Text className='banner-time'>{this.formatCountdown(remainingTime)}</Text>
+          </View>
+        )}
+
         <View className='search-section'>
           <View className='search-title'>
             <Text className='title-text'>搜索酒店</Text>
           </View>
 
           <View className='search-form'>
-            <View className='form-item'>
-              <Text className='form-label'>城市</Text>
-              <Picker mode='selector' range={['不限', '北京', '上海', '广州', '深圳', '杭州', '成都']} onChange={this.handleCityChange}>
-                <View className='form-value'>
-                  <Text>{this.state.searchParams.city || '不限'}</Text>
-                  <Text className='arrow'>▼</Text>
+            <View className='form-row'>
+              <View className='form-item'>
+                <Text className='form-label'>城市</Text>
+                <View className='form-value-row'>
+                  <Picker mode='selector' range={['不限', '北京', '上海', '广州', '深圳', '杭州', '成都']} onChange={this.handleCityChange}>
+                    <View className='form-value'>
+                      <Text>{this.state.searchParams.city || '不限'}</Text>
+                      <Text className='arrow'>▼</Text>
+                    </View>
+                  </Picker>
+                  <View className='location-btn' onClick={this.handleLocationClick}>
+                    <Text className={`location-icon ${this.state.locating ? 'locating' : ''}`}>🌍</Text>
+                  </View>
                 </View>
-              </Picker>
-            </View>
+              </View>
 
-            <View className='form-item'>
-              <Text className='form-label'>酒店名称</Text>
-              <Input
-                className='form-input'
-                placeholder='请输入酒店名称'
-                value={this.state.searchParams.hotelName}
-                onInput={this.handleHotelNameChange}
-              />
+              <View className='form-item'>
+                <Text className='form-label'>酒店名称</Text>
+                <Input
+                  className='form-input'
+                  placeholder='请输入酒店名称'
+                  value={this.state.searchParams.hotelName}
+                  onInput={this.handleHotelNameChange}
+                />
+              </View>
             </View>
 
             <View className='form-row'>
@@ -387,24 +716,19 @@ export default class Index extends Component<{}, IndexState> {
             </View>
 
             <View className='form-row'>
-              <View className='form-item'>
-                <Text className='form-label'>价格区间</Text>
-                <Picker mode='selector' range={this.state.priceRanges.map(item => item.label)} onChange={this.handlePriceChange}>
-                  <View className='form-value'>
-                    <Text>{this.state.priceRanges.find(item => item.value[0] === this.state.searchParams.priceRange[0])?.label}</Text>
-                    <Text className='arrow'>▼</Text>
-                  </View>
-                </Picker>
+              <View className='form-item half-width'>
+                <Text className='form-label'>价格</Text>
+                <View className='form-value' onClick={this.handlePriceClick}>
+                  <Text>¥{searchParams.minPrice} - {searchParams.maxPrice >= 2000 ? '2000以上' : searchParams.maxPrice}</Text>
+                  <Text className='arrow'>▼</Text>
+                </View>
               </View>
-
-              <View className='form-item'>
+              <View className='form-item half-width'>
                 <Text className='form-label'>星级</Text>
-                <Picker mode='selector' range={this.state.starLevels.map(item => item.label)} onChange={this.handleStarChange}>
-                  <View className='form-value'>
-                    <Text>{this.state.starLevels.find(item => item.value === this.state.searchParams.starLevel)?.label}</Text>
-                    <Text className='arrow'>▼</Text>
-                  </View>
-                </Picker>
+                <View className='form-value' onClick={this.handleStarClick}>
+                  <Text>{this.state.starLevels.find(item => item.value === this.state.searchParams.starLevel)?.label}</Text>
+                  <Text className='arrow'>▼</Text>
+                </View>
               </View>
             </View>
 
@@ -493,6 +817,75 @@ export default class Index extends Component<{}, IndexState> {
           onConfirm={this.handleCalendarConfirm}
           onClose={this.handleCalendarClose}
         />
+
+        {showPriceModal && (
+          <View className='modal-mask' onClick={this.handlePriceCancel}>
+            <View className='modal-content' onClick={(e) => e.stopPropagation()}>
+              <View className='modal-header'>
+                <Text className='modal-title'>选择价格区间</Text>
+                <View className='modal-close' onClick={this.handlePriceCancel}>✕</View>
+              </View>
+              <View className='modal-body'>
+                <View className='price-input-row'>
+                  <View className='price-input-item'>
+                    <Text className='price-label'>最低价格</Text>
+                    <Input
+                      className='price-input'
+                      type='number'
+                      value={this.state.tempMinPrice}
+                      onInput={this.handleMinPriceChange}
+                    />
+                  </View>
+                  <View className='price-input-item'>
+                    <Text className='price-label'>最高价格</Text>
+                    <Input
+                      className='price-input'
+                      type='number'
+                      value={this.state.tempMaxPrice}
+                      onInput={this.handleMaxPriceChange}
+                    />
+                  </View>
+                </View>
+              </View>
+              <View className='modal-footer'>
+                <Button className='modal-btn cancel-btn' onClick={this.handlePriceCancel}>取消</Button>
+                <Button className='modal-btn confirm-btn' onClick={this.handlePriceConfirm}>确定</Button>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {showStarModal && (
+          <View className='modal-mask' onClick={this.handleStarCancel}>
+            <View className='modal-content' onClick={(e) => e.stopPropagation()}>
+              <View className='modal-header'>
+                <Text className='modal-title'>选择星级</Text>
+                <View className='modal-close' onClick={this.handleStarCancel}>✕</View>
+              </View>
+              <View className='modal-body'>
+                <View className='star-rating-container'>
+                  <Text className='star-rating-title'>请选择酒店星级</Text>
+                  <View className='star-rating'>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Text
+                        key={star}
+                        className={`star ${searchParams.starLevel >= star ? 'active' : ''}`}
+                        onClick={() => this.handleStarSelect(star)}
+                      >
+                        ⭐
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+              </View>
+              <View className='modal-footer'>
+                <Button className='modal-btn cancel-btn' onClick={this.handleStarCancel}>取消</Button>
+                <Button className='modal-btn confirm-btn' onClick={this.handleStarConfirm}>确定</Button>
+              </View>
+            </View>
+          </View>
+        )}
+
       </View>
     )
   }

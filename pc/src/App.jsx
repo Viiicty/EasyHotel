@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 import Overview from './pages/merchant/Overview'
 import HotelInfo from './pages/merchant/HotelInfo'
+import HotelManage from './pages/merchant/HotelManage'
 import RoomType from './pages/merchant/RoomType'
 import RoomPrice from './pages/merchant/RoomPrice'
 import Submission from './pages/merchant/Submission'
@@ -44,6 +45,7 @@ function App() {
               <Route index element={<Navigate to="/merchant/overview" replace />} />
               <Route path="overview" element={<Overview />} />
               <Route path="hotel-info" element={<HotelInfo />} />
+              <Route path="hotel-manage" element={<HotelManage />} />
               <Route path="room-type" element={<RoomType />} />
               <Route path="room-price" element={<RoomPrice />} />
               <Route path="submission" element={<Submission />} />

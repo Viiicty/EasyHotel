@@ -1,6 +1,7 @@
+import Taro from '@tarojs/taro'
 import { userService } from './user.service'
 
-const API_BASE = 'http://192.168.3.22:8888'
+const API_BASE = 'http://localhost:8888'
 
 export const orderService = {
   getUserOrders: async (params: { status?: string; page?: number; pageSize?: number }) => {
@@ -10,105 +11,155 @@ export const orderService = {
     if (params.page) queryParams.append('page', String(params.page))
     if (params.pageSize) queryParams.append('pageSize', String(params.pageSize))
 
-    const response = await fetch(`${API_BASE}/mini/orders?${queryParams.toString()}`, {
+    const response = await Taro.request({
+      url: `${API_BASE}/mini/orders?${queryParams.toString()}`,
       method: 'GET',
-      headers: {
+      header: {
         'Authorization': `Bearer ${token}`
       }
     })
 
-    if (!response.ok) {
+    if (response.statusCode !== 200) {
       throw new Error('获取订单列表失败')
     }
 
-    const result = await response.json()
-    return result.data
+    return response.data.data
+  },
+
+  getPendingOrder: async () => {
+    const token = userService.getToken()
+    const response = await Taro.request({
+      url: `${API_BASE}/mini/orders/pending`,
+      method: 'GET',
+      header: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    console.log('=== getPendingOrder 响应 ===')
+    console.log('statusCode:', response.statusCode)
+    console.log('data:', response.data)
+
+    if (response.statusCode !== 200) {
+      console.error('getPendingOrder 失败:', response.data)
+      return null
+    }
+
+    return response.data.data
   },
 
   getOrderById: async (orderId: string) => {
     const token = userService.getToken()
-    const response = await fetch(`${API_BASE}/mini/orders/${orderId}`, {
+    const response = await Taro.request({
+      url: `${API_BASE}/mini/orders/${orderId}`,
       method: 'GET',
-      headers: {
+      header: {
         'Authorization': `Bearer ${token}`
       }
     })
 
-    if (!response.ok) {
+    if (response.statusCode !== 200) {
       throw new Error('获取订单详情失败')
     }
 
-    const result = await response.json()
-    return result.data
+    return response.data.data
   },
 
   getOrderStatus: async (orderId: string) => {
     const token = userService.getToken()
-    const response = await fetch(`${API_BASE}/mini/orders/${orderId}/status`, {
+    const response = await Taro.request({
+      url: `${API_BASE}/mini/orders/${orderId}/status`,
       method: 'GET',
-      headers: {
+      header: {
         'Authorization': `Bearer ${token}`
       }
     })
 
-    if (!response.ok) {
+    if (response.statusCode !== 200) {
       throw new Error('获取订单状态失败')
     }
 
-    const result = await response.json()
-    return result.data
+    return response.data.data
   },
 
   confirmOrder: async (orderId: string) => {
     const token = userService.getToken()
-    const response = await fetch(`${API_BASE}/mini/orders/${orderId}/confirm`, {
+    const response = await Taro.request({
+      url: `${API_BASE}/mini/orders/${orderId}/confirm`,
       method: 'POST',
-      headers: {
+      header: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     })
 
-    if (!response.ok) {
+    if (response.statusCode !== 200 && response.statusCode !== 201) {
       throw new Error('确认订单失败')
     }
 
-    const result = await response.json()
-    return result.data
+    return response.data.data
   },
 
   cancelOrder: async (orderId: string) => {
     const token = userService.getToken()
-    const response = await fetch(`${API_BASE}/mini/orders/${orderId}/cancel`, {
+    const response = await Taro.request({
+      url: `${API_BASE}/mini/orders/${orderId}/cancel`,
       method: 'POST',
-      headers: {
+      header: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     })
 
-    if (!response.ok) {
-      throw new Error('取消订单失败')
+    console.log('=== cancelOrder 响应 ===')
+    console.log('statusCode:', response.statusCode)
+    console.log('response.data:', response.data)
+
+    if (response.statusCode !== 200 && response.statusCode !== 201) {
+      const errorMessage = response.data?.message || response.data?.error || '取消订单失败'
+      throw new Error(errorMessage)
     }
 
-    const result = await response.json()
-    return result.data
+    return response.data.data
+  },
+
+  payOrder: async (orderId: string) => {
+    const token = userService.getToken()
+    const response = await Taro.request({
+      url: `${API_BASE}/mini/orders/${orderId}/pay`,
+      method: 'POST',
+      header: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    console.log('=== payOrder 响应 ===')
+    console.log('statusCode:', response.statusCode)
+    console.log('response.data:', response.data)
+
+    if (response.statusCode !== 200 && response.statusCode !== 201) {
+      const errorMessage = response.data?.message || response.data?.error || '支付失败'
+      throw new Error(errorMessage)
+    }
+
+    return response.data.data
   },
 
   deleteOrder: async (orderId: string) => {
     const token = userService.getToken()
-    const response = await fetch(`${API_BASE}/mini/orders/${orderId}`, {
+    const response = await Taro.request({
+      url: `${API_BASE}/mini/orders/${orderId}`,
       method: 'DELETE',
-      headers: {
+      header: {
         'Authorization': `Bearer ${token}`
       }
     })
 
-    if (!response.ok) {
+    if (response.statusCode !== 200) {
       throw new Error('删除订单失败')
     }
 
-    const result = await response.json()
-    return result.data
+    return response.data.data
   }
 }

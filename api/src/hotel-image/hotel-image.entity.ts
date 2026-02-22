@@ -16,7 +16,4 @@ export class HotelImageEntity extends BaseEntity {
 
   @Column({ type: 'int', nullable: true, comment: '左右滑动顺序' })
   sortNo?: number;
-
-  @Column({ type: 'varchar', length: 1, nullable: true, comment: '是否封面' })
-  isCover?: string;
 }

@@ -39,9 +39,20 @@ export class HotelImageService {
     });
   }
 
-  async findCoverByHotelId(hotelId: string): Promise<HotelImageEntity | undefined> {
-    return this.hotelImageRepository.findOne({ 
-      where: { hotelId, isCover: '1' }
-    });
+  async deleteByHotelId(hotelId: string): Promise<void> {
+    await this.hotelImageRepository.delete({ hotelId });
+  }
+
+  async batchCreate(images: Partial<HotelImageEntity>[]): Promise<HotelImageEntity[]> {
+    const createdImages = this.hotelImageRepository.create(images);
+    return this.hotelImageRepository.save(createdImages);
+  }
+
+  async updateSortOrder(images: Array<{ id: string; sortNo: number }>): Promise<void> {
+    await Promise.all(
+      images.map(({ id, sortNo }) =>
+        this.hotelImageRepository.update(id, { sortNo })
+      )
+    );
   }
 }

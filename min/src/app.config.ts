@@ -5,7 +5,6 @@ export default defineAppConfig({
     'pages/hotel/detail',
     'pages/book/book',
     'pages/user/profile',
-    'pages/order/list',
     'pages/order/detail',
     'pages/login/login',
     'pages/register/register'
@@ -16,6 +15,14 @@ export default defineAppConfig({
     navigationBarTitleText: 'EasyHotel',
     navigationBarTextStyle: 'white',
     enablePullDownRefresh: false
+  },
+  requiredPrivateInfos: [
+    'getLocation'
+  ],
+  permission: {
+    'scope.userLocation': {
+      desc: '您的位置信息将用于为您推荐附近的酒店'
+    }
   },
   // tabBar: {
   //   color: '#999999',

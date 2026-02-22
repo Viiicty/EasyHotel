@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { View, Text, Input, Button, Image } from '@tarojs/components'
+import { View, Text, Input, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { userService } from '../../services/user.service'
 import './login.scss'
@@ -17,6 +17,14 @@ export default class LoginPage extends Component<{}, LoginState> {
     code: '',
     countdown: 0,
     sending: false
+  }
+
+  componentDidMount() {
+    console.log('=== LoginPage componentDidMount ===')
+  }
+
+  componentDidShow() {
+    console.log('=== LoginPage componentDidShow ===')
   }
 
   handlePhoneChange = (e) => {
@@ -112,11 +120,11 @@ export default class LoginPage extends Component<{}, LoginState> {
       Taro.showLoading({ title: '登录中...' })
 
       console.log('=== 开始登录请求 ===')
-      console.log('请求URL:', 'http://192.168.3.22:8888/auth/mini/login')
+      console.log('请求URL:', 'http://localhost:8888/auth/mini/login')
       console.log('请求数据:', { phone })
 
       const res = await Taro.request({
-        url: 'http://192.168.3.22:8888/auth/mini/login',
+        url: 'http://localhost:8888/auth/mini/login',
         method: 'POST',
         header: {
           'Content-Type': 'application/json'
@@ -210,6 +218,7 @@ export default class LoginPage extends Component<{}, LoginState> {
   }
 
   render() {
+    console.log('=== LoginPage render ===')
     const { phone, code, countdown, sending } = this.state
 
     return (

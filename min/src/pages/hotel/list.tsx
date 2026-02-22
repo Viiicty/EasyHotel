@@ -2,6 +2,7 @@ import React, { Component } from 'react'
 import { View, Text, Image, Input, Picker, Button, ScrollView } from '@tarojs/components'
 import Taro, { getCurrentInstance } from '@tarojs/taro'
 import { Hotel, hotelService } from '../../services/hotel.service'
+import { orderService } from '../../services/order.service'
 import Calendar from '../../components/calendar/calendar'
 import Skeleton from '../../components/skeleton/skeleton'
 import { debounce } from '../../utils/debounce'
@@ -12,7 +13,8 @@ interface SearchParams {
   hotelName: string
   checkIn: string
   checkOut: string
-  priceRange: number[]
+  minPrice: number
+  maxPrice: number
   starLevel: number
   tags: string[]
   rooms: number
@@ -32,9 +34,35 @@ interface HotelListState {
   showGuestPanel: boolean
   showCalendar: boolean
   calendarType: 'checkIn' | 'checkOut'
+  pendingOrder: any
+  remainingTime: number
+  bookmarkPosition: { x: number; y: number }
+  isDragging: boolean
+  showPriceModal: boolean
+  showStarModal: boolean
+
+}
+
+const getTodayDate = () => {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const getTomorrowDate = () => {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const year = tomorrow.getFullYear()
+  const month = String(tomorrow.getMonth() + 1).padStart(2, '0')
+  const day = String(tomorrow.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 export default class HotelList extends Component<{}, HotelListState> {
+  countdownTimer: any = null
+
   state: HotelListState = {
     hotels: [],
     loading: false,
@@ -45,9 +73,10 @@ export default class HotelList extends Component<{}, HotelListState> {
     searchParams: {
       city: '',
       hotelName: '',
-      checkIn: '2026-02-10',
-      checkOut: '2026-02-11',
-      priceRange: [0, 1000],
+      checkIn: getTodayDate(),
+      checkOut: getTomorrowDate(),
+      minPrice: 0,
+      maxPrice: 2000,
       starLevel: 0,
       tags: [],
       rooms: 1,
@@ -57,28 +86,35 @@ export default class HotelList extends Component<{}, HotelListState> {
     showCityDatePanel: false,
     showGuestPanel: false,
     showCalendar: false,
-    calendarType: 'checkIn'
+    calendarType: 'checkIn',
+    pendingOrder: null,
+    remainingTime: 0,
+    bookmarkPosition: { x: 0, y: 0 },
+    isDragging: false,
+    showPriceModal: false,
+    showStarModal: false
   }
 
   componentDidShow() {
     const instance = getCurrentInstance()
     const { hotels, searchParams } = instance.router?.params || {}
 
-    console.log('接收到的参数:', { hotels, searchParams })
+    this.loadPendingOrder()
+
+    const savedCheckIn = Taro.getStorageSync('selectedCheckIn')
+    const savedCheckOut = Taro.getStorageSync('selectedCheckOut')
 
     if (searchParams) {
       try {
         const parsedParams = JSON.parse(decodeURIComponent(searchParams))
-        console.log('解析后的搜索参数:', parsedParams)
+        if (savedCheckIn && savedCheckOut) {
+          parsedParams.checkIn = savedCheckIn
+          parsedParams.checkOut = savedCheckOut
+        }
         this.setState({ searchParams: parsedParams }, () => {
           if (hotels) {
             try {
               const parsedHotels = JSON.parse(decodeURIComponent(hotels))
-              console.log('解析后的酒店数据:', parsedHotels)
-              parsedHotels.forEach((hotel, index) => {
-                console.log(`酒店 ${index}:`, hotel)
-                console.log(`酒店 ${index} minPrice:`, hotel.minPrice)
-              })
               this.setState({
                 hotels: parsedHotels,
                 hasMore: parsedHotels.length >= this.state.pageSize
@@ -93,25 +129,168 @@ export default class HotelList extends Component<{}, HotelListState> {
       } catch (error) {
         console.error('解析搜索参数失败:', error)
       }
-    } else if (hotels) {
-      try {
-        const parsedHotels = JSON.parse(decodeURIComponent(hotels))
-        console.log('解析后的酒店数据:', parsedHotels)
-        parsedHotels.forEach((hotel, index) => {
-          console.log(`酒店 ${index}:`, hotel)
-          console.log(`酒店 ${index} minPrice:`, hotel.minPrice)
+    } else {
+      let shouldReload = false
+      if (savedCheckIn && savedCheckOut) {
+        const currentCheckIn = this.state.searchParams.checkIn
+        const currentCheckOut = this.state.searchParams.checkOut
+        if (currentCheckIn !== savedCheckIn || currentCheckOut !== savedCheckOut) {
+          shouldReload = true
+        }
+        this.setState(prevState => ({
+          searchParams: {
+            ...prevState.searchParams,
+            checkIn: savedCheckIn,
+            checkOut: savedCheckOut
+          }
+        }), () => {
+          if (shouldReload) {
+            this.loadInitialHotels()
+          }
         })
-        this.setState({
-          hotels: parsedHotels,
-          hasMore: parsedHotels.length >= this.state.pageSize
-        })
-      } catch (error) {
-        console.error('解析酒店数据失败:', error)
+      }
+      if (hotels) {
+        try {
+          const parsedHotels = JSON.parse(decodeURIComponent(hotels))
+          this.setState({
+            hotels: parsedHotels,
+            hasMore: parsedHotels.length >= this.state.pageSize
+          })
+        } catch (error) {
+          console.error('解析酒店数据失败:', error)
+        }
       }
     }
   }
 
-  componentDidHide() {}
+  componentDidHide() {
+    this.stopCountdown()
+  }
+
+  loadPendingOrder = async () => {
+    try {
+      const order = await orderService.getPendingOrder()
+      this.setState({
+        pendingOrder: order,
+        remainingTime: order?.remainingTime || 0
+      }, () => {
+        this.startCountdown()
+      })
+    } catch (error) {
+      this.setState({ pendingOrder: null, remainingTime: 0 }, () => {
+        this.startCountdown()
+      })
+    }
+  }
+
+  startCountdown = () => {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer)
+    }
+
+    const { remainingTime } = this.state
+    if (remainingTime <= 0) {
+      return
+    }
+
+    this.countdownTimer = setInterval(() => {
+      this.setState(prevState => {
+        const newRemainingTime = prevState.remainingTime - 1
+        if (newRemainingTime > 0) {
+          return { remainingTime: newRemainingTime }
+        } else {
+          clearInterval(this.countdownTimer)
+          this.countdownTimer = null
+          setTimeout(() => {
+            this.loadPendingOrder()
+          }, 100)
+          return { remainingTime: 0 }
+        }
+      })
+    }, 1000)
+  }
+
+  stopCountdown = () => {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer)
+      this.countdownTimer = null
+    }
+  }
+
+  handleBookmarkClick = () => {
+    if (this.state.isDragging) return
+
+    if (this.state.pendingOrder) {
+      Taro.navigateTo({
+        url: `/pages/order/detail?orderId=${this.state.pendingOrder.orderId}`
+      })
+    }
+  }
+
+  handleBookmarkTouchStart = (e) => {
+    const touch = e.touches[0]
+    this.startX = touch.clientX
+    this.startY = touch.clientY
+    this.startPositionX = this.state.bookmarkPosition.x
+    this.startPositionY = this.state.bookmarkPosition.y
+    this.setState({ isDragging: false })
+  }
+
+  handleBookmarkTouchMove = (e) => {
+    const touch = e.touches[0]
+    const deltaX = touch.clientX - this.startX
+    const deltaY = touch.clientY - this.startY
+
+    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+      this.setState({ isDragging: true })
+    }
+
+    let newX = this.startPositionX + deltaX
+    let newY = this.startPositionY + deltaY
+
+    const systemInfo = Taro.getSystemInfoSync()
+    const screenWidth = systemInfo.windowWidth
+    const screenHeight = systemInfo.windowHeight
+    const bookmarkSize = 100
+    const margin = 10
+
+    newX = Math.max(margin, Math.min(newX, screenWidth - bookmarkSize - margin))
+    newY = Math.max(margin, Math.min(newY, screenHeight - bookmarkSize - margin))
+
+    this.setState({
+      bookmarkPosition: { x: newX, y: newY }
+    })
+  }
+
+  handleBookmarkTouchEnd = () => {
+    const systemInfo = Taro.getSystemInfoSync()
+    const screenWidth = systemInfo.windowWidth
+    const bookmarkSize = 100
+    const bookmarkSize2 = 65
+    const margin = 5
+
+    const { bookmarkPosition } = this.state
+    const centerX = bookmarkPosition.x + bookmarkSize / 2
+    const screenCenterX = screenWidth / 2
+
+    let finalX = bookmarkPosition.x
+    if (centerX < screenCenterX) {
+      finalX = margin
+    } else {
+      finalX = screenWidth - bookmarkSize2
+    }
+
+    this.setState({
+      bookmarkPosition: { x: finalX, y: bookmarkPosition.y },
+      isDragging: false
+    })
+  }
+
+  formatCountdown = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${minutes}:${secs.toString().padStart(2, '0')}`
+  }
 
   loadInitialHotels = async () => {
     const { searchParams, pageSize } = this.state
@@ -129,7 +308,9 @@ export default class HotelList extends Component<{}, HotelListState> {
         page: 1,
         pageSize: pageSize,
         checkIn: searchParams.checkIn,
-        checkOut: searchParams.checkOut
+        checkOut: searchParams.checkOut,
+        minPrice: searchParams.minPrice > 0 ? searchParams.minPrice : undefined,
+        maxPrice: searchParams.maxPrice < 2000 ? searchParams.maxPrice : undefined
       })
 
       const elapsedTime = Date.now() - startTime
@@ -183,7 +364,9 @@ export default class HotelList extends Component<{}, HotelListState> {
         page: newPage,
         pageSize: pageSize,
         checkIn: searchParams.checkIn,
-        checkOut: searchParams.checkOut
+        checkOut: searchParams.checkOut,
+        minPrice: searchParams.minPrice > 0 ? searchParams.minPrice : undefined,
+        maxPrice: searchParams.maxPrice < 2000 ? searchParams.maxPrice : undefined
       })
 
       if (result && result.length > 0) {
@@ -231,6 +414,8 @@ export default class HotelList extends Component<{}, HotelListState> {
       },
       showCalendar: false
     })
+    Taro.setStorageSync('selectedCheckIn', startDate)
+    Taro.setStorageSync('selectedCheckOut', endDate)
   }
 
   handleCalendarClose = () => {
@@ -303,8 +488,72 @@ export default class HotelList extends Component<{}, HotelListState> {
 
   handleSearch = () => {
     const { searchParams } = this.state
-    console.log('搜索参数:', searchParams)
     this.setState({ showCityDatePanel: false, showGuestPanel: false })
+    this.loadInitialHotels()
+  }
+
+  handleMinPriceChange = (e) => {
+    const value = parseInt(e.detail.value)
+    this.setState(prevState => ({
+      searchParams: {
+        ...prevState.searchParams,
+        minPrice: Math.min(value, prevState.searchParams.maxPrice - 100)
+      }
+    }))
+  }
+
+  handleMaxPriceChange = (e) => {
+    const value = parseInt(e.detail.value)
+    this.setState(prevState => ({
+      searchParams: {
+        ...prevState.searchParams,
+        maxPrice: Math.max(value, prevState.searchParams.minPrice + 100)
+      }
+    }))
+  }
+
+  handleStarClick = () => {
+    this.setState({
+      showStarModal: true,
+      showCityDatePanel: false,
+      showGuestPanel: false
+    })
+  }
+
+  handleStarConfirm = () => {
+    this.setState({ showStarModal: false })
+  }
+
+  handleStarCancel = () => {
+    this.setState({ showStarModal: false })
+  }
+
+  handleStarSelect = (starLevel) => {
+    this.setState(prevState => ({
+      searchParams: {
+        ...prevState.searchParams,
+        starLevel: starLevel
+      }
+    }))
+  }
+
+  handlePriceClick = () => {
+    console.log('点击价格选项，打开价格弹窗')
+    this.setState({
+      showCityDatePanel: false,
+      showGuestPanel: false,
+      showPriceModal: true
+    })
+  }
+
+  handlePriceConfirm = () => {
+    console.log('确认价格，关闭价格弹窗')
+    this.setState({ showPriceModal: false })
+  }
+
+  handlePriceCancel = () => {
+    console.log('取消价格选择，关闭价格弹窗')
+    this.setState({ showPriceModal: false })
   }
 
   handleHotelClick = (hotelId: string) => {
@@ -358,15 +607,11 @@ export default class HotelList extends Component<{}, HotelListState> {
   }
 
   renderPrice = (minPrice?: number) => {
-    console.log('renderPrice 调用，minPrice:', minPrice)
-
     if (!minPrice) {
-      console.log('minPrice 为空，不显示价格')
       return null
     }
 
     const nights = this.calculateNights()
-    console.log('入住天数:', nights)
 
     if (nights === 1) {
       return (
@@ -388,7 +633,7 @@ export default class HotelList extends Component<{}, HotelListState> {
   }
 
   render() {
-    const { hotels, searchParams, showCityDatePanel, showGuestPanel, showCalendar, loadingMore, hasMore } = this.state
+    const { hotels, searchParams, showCityDatePanel, showGuestPanel, showCalendar, loadingMore, hasMore, pendingOrder, remainingTime, bookmarkPosition, showPriceModal, showStarModal } = this.state
 
     return (
       <View className='hotel-list-page'>
@@ -422,31 +667,49 @@ export default class HotelList extends Component<{}, HotelListState> {
           {showCityDatePanel && (
             <View className='city-date-mask' onClick={this.handleCityDateMaskClick}>
               <View className='city-date-panel' onClick={(e) => e.stopPropagation()}>
-                <View className='panel-content'>
-                  <View className='panel-row'>
-                    <Text className='panel-label'>城市</Text>
-                    <Picker mode='selector' range={['不限', '北京', '上海', '广州', '深圳', '杭州', '成都']} onChange={this.handleCitySelect}>
+                <ScrollView className='panel-scroll' scrollY>
+                  <View className='panel-content'>
+                    <View className='panel-row'>
+                      <Text className='panel-label'>城市</Text>
+                      <Picker mode='selector' range={['不限', '北京', '上海', '广州', '深圳', '杭州', '成都']} onChange={this.handleCitySelect}>
+                        <View className='panel-picker'>
+                          <Text>{searchParams.city || '不限'}</Text>
+                          <Text className='picker-arrow'>▼</Text>
+                        </View>
+                      </Picker>
+                    </View>
+                    <View className='panel-row' onClick={this.handleCheckInClick}>
+                      <Text className='panel-label'>入住日期</Text>
                       <View className='panel-picker'>
-                        <Text>{searchParams.city || '不限'}</Text>
+                        <Text>{this.formatDateDisplaySimple(searchParams.checkIn)}</Text>
                         <Text className='picker-arrow'>▼</Text>
                       </View>
-                    </Picker>
-                  </View>
-                  <View className='panel-row' onClick={this.handleCheckInClick}>
-                    <Text className='panel-label'>入住日期</Text>
-                    <View className='panel-picker'>
-                      <Text>{this.formatDateDisplaySimple(searchParams.checkIn)}</Text>
-                      <Text className='picker-arrow'>▼</Text>
+                    </View>
+                    <View className='panel-row' onClick={this.handleCheckOutClick}>
+                      <Text className='panel-label'>离店日期</Text>
+                      <View className='panel-picker'>
+                        <Text>{this.formatDateDisplaySimple(searchParams.checkOut)}</Text>
+                        <Text className='picker-arrow'>▼</Text>
+                      </View>
+                    </View>
+                    <View className='panel-row' style={{flexWrap: 'wrap'}}>
+                      <View className='panel-half-row' style={{width: '48%', marginRight: '4%'}}>
+                        <Text className='panel-label'>价格</Text>
+                        <View className='panel-picker'>
+                          <Text>¥{searchParams.minPrice} - {searchParams.maxPrice >= 2000 ? '2000以上' : searchParams.maxPrice}</Text>
+                          <Text className='picker-arrow'>▼</Text>
+                        </View>
+                      </View>
+                      <View className='panel-half-row' style={{width: '48%'}}>
+                        <Text className='panel-label'>星级</Text>
+                        <View className='panel-picker' onClick={this.handleStarClick}>
+                          <Text>{searchParams.starLevel > 0 ? searchParams.starLevel + '星' : '不限'}</Text>
+                          <Text className='picker-arrow'>▼</Text>
+                        </View>
+                      </View>
                     </View>
                   </View>
-                  <View className='panel-row' onClick={this.handleCheckOutClick}>
-                    <Text className='panel-label'>离店日期</Text>
-                    <View className='panel-picker'>
-                      <Text>{this.formatDateDisplaySimple(searchParams.checkOut)}</Text>
-                      <Text className='picker-arrow'>▼</Text>
-                    </View>
-                  </View>
-                </View>
+                </ScrollView>
                 <View className='panel-footer'>
                   <Button className='panel-btn' onClick={this.handleSearch}>确认搜索</Button>
                 </View>
@@ -500,6 +763,23 @@ export default class HotelList extends Component<{}, HotelListState> {
                 <Button className='drawer-btn' onClick={this.handleSearch}>完成</Button>
               </View>
             </View>
+          </View>
+        )}
+
+        {pendingOrder && remainingTime > 0 && (
+          <View
+            className='pending-bookmark'
+            style={{
+              left: `${bookmarkPosition.x}px`,
+              top: `${bookmarkPosition.y}px`
+            }}
+            onClick={this.handleBookmarkClick}
+            onTouchStart={this.handleBookmarkTouchStart}
+            onTouchMove={this.handleBookmarkTouchMove}
+            onTouchEnd={this.handleBookmarkTouchEnd}
+          >
+            <Text className='bookmark-icon'>⏰</Text>
+            <Text className='bookmark-time'>{this.formatCountdown(remainingTime)}</Text>
           </View>
         )}
 
@@ -576,6 +856,77 @@ export default class HotelList extends Component<{}, HotelListState> {
           onConfirm={this.handleCalendarConfirm}
           onClose={this.handleCalendarClose}
         />
+
+        {showPriceModal && (
+          <View className='modal-mask' onClick={this.handlePriceCancel}>
+            <View className='modal-content' onClick={(e) => e.stopPropagation()}>
+              <View className='modal-header'>
+                <Text className='modal-title'>选择价格区间</Text>
+                <View className='modal-close' onClick={this.handlePriceCancel}>✕</View>
+              </View>
+              <View className='modal-body'>
+                <View className='price-input-row'>
+                  <View className='price-input-item'>
+                    <Text className='price-label'>最低价格</Text>
+                    <Input
+                      className='price-input'
+                      type='number'
+                      value={searchParams.minPrice.toString()}
+                      onChange={this.handleMinPriceChange}
+                      placeholder='0'
+                    />
+                  </View>
+                  <View className='price-input-item'>
+                    <Text className='price-label'>最高价格</Text>
+                    <Input
+                      className='price-input'
+                      type='number'
+                      value={searchParams.maxPrice.toString()}
+                      onChange={this.handleMaxPriceChange}
+                      placeholder='2000'
+                    />
+                  </View>
+                </View>
+              </View>
+              <View className='modal-footer'>
+                <Button className='modal-btn cancel-btn' onClick={this.handlePriceCancel}>取消</Button>
+                <Button className='modal-btn confirm-btn' onClick={this.handlePriceConfirm}>确定</Button>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {showStarModal && (
+          <View className='modal-mask' onClick={this.handleStarCancel}>
+            <View className='modal-content' onClick={(e) => e.stopPropagation()}>
+              <View className='modal-header'>
+                <Text className='modal-title'>选择星级</Text>
+                <View className='modal-close' onClick={this.handleStarCancel}>✕</View>
+              </View>
+              <View className='modal-body'>
+                <View className='star-rating-container'>
+                  <Text className='star-rating-title'>请选择酒店星级</Text>
+                  <View className='star-rating'>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Text
+                        key={star}
+                        className={`star ${searchParams.starLevel >= star ? 'active' : ''}`}
+                        onClick={() => this.handleStarSelect(star)}
+                      >
+                        ⭐
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+              </View>
+              <View className='modal-footer'>
+                <Button className='modal-btn cancel-btn' onClick={this.handleStarCancel}>取消</Button>
+                <Button className='modal-btn confirm-btn' onClick={this.handleStarConfirm}>确定</Button>
+              </View>
+            </View>
+          </View>
+        )}
+
       </View>
     )
   }
