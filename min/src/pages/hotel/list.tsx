@@ -33,6 +33,7 @@ interface HotelListState {
   page: number
   pageSize: number
   searchParams: SearchParams
+  displayCity: string
   showCityDatePanel: boolean
   showGuestPanel: boolean
   showCalendar: boolean
@@ -115,6 +116,7 @@ export default class HotelList extends Component<{}, HotelListState> {
       adults: 1,
       children: 0
     },
+    displayCity: '',
     showCityDatePanel: false,
     showGuestPanel: false,
     showCalendar: false,
@@ -546,7 +548,8 @@ export default class HotelList extends Component<{}, HotelListState> {
         const result = res.data.data.regeocode
         const addressComponent = result.addressComponent
         const province = addressComponent.province
-        const city = (addressComponent.city && addressComponent.city.length > 0) ? addressComponent.city : addressComponent.province
+        const originalCity = (addressComponent.city && addressComponent.city.length > 0) ? addressComponent.city : addressComponent.province
+        let city = originalCity.replace(/市$/, '')
         const district = addressComponent.district
         const township = addressComponent.township
         const street = addressComponent.streetNumber && addressComponent.street ? `${addressComponent.street}${addressComponent.streetNumber}` : addressComponent.street
@@ -554,16 +557,17 @@ export default class HotelList extends Component<{}, HotelListState> {
 
         const cityPinyin = this.cityPinyinMap[city] || city.toLowerCase()
 
-        const isDirectCity = province === city
+        const isDirectCity = province === originalCity
         const displayAddress = isDirectCity 
-          ? `${city}，${district}` 
-          : `${province}，${city}，${district}`
+          ? `${originalCity}，${district}` 
+          : `${province}，${originalCity}，${district}`
 
         this.setState({
           searchParams: {
             ...this.state.searchParams,
-            city: city
+            city: cityPinyin
           },
+          displayCity: city,
           locating: false
         })
 
@@ -620,12 +624,14 @@ export default class HotelList extends Component<{}, HotelListState> {
   }
 
   handleCitySelect = (city) => {
+    const cityPinyin = city === '不限' ? '' : (this.cityPinyinMap[city] || city.toLowerCase())
     this.setState(prevState => ({
       showCityDatePanel: false,
       searchParams: {
         ...prevState.searchParams,
-        city: city === '不限' ? '' : city
-      }
+        city: cityPinyin
+      },
+      displayCity: city === '不限' ? '' : city
     }))
   }
 
@@ -791,14 +797,14 @@ export default class HotelList extends Component<{}, HotelListState> {
   }
 
   render() {
-    const { hotels, searchParams, showCityDatePanel, showGuestPanel, showCalendar, loadingMore, hasMore, pendingOrder, remainingTime, bookmarkPosition, showPriceModal, showStarModal, showCityModal, locating } = this.state
+    const { hotels, searchParams, displayCity, showCityDatePanel, showGuestPanel, showCalendar, loadingMore, hasMore, pendingOrder, remainingTime, bookmarkPosition, showPriceModal, showStarModal, showCityModal, locating } = this.state
 
     return (
       <View className='hotel-list-page'>
         <View className='search-bar'>
           <View className='search-main-row'>
             <View className='search-city' onClick={this.handleCityDateClick}>
-              <Text className='city-text'>{searchParams.city || '城市'}</Text>
+              <Text className='city-text'>{displayCity || '城市'}</Text>
               <Text className='arrow'>▼</Text>
             </View>
             <View className='search-dates' onClick={this.handleCityDateClick}>
@@ -837,7 +843,7 @@ export default class HotelList extends Component<{}, HotelListState> {
                       <Text className='panel-label'>城市</Text>
                       <View className='location-icon' onClick={locating ? null : this.handleCityClick}>🌏</View>
                       <View className='panel-picker' onClick={locating ? null : this.handleCityPickerClick}>
-                        <Text>{locating ? '定位中...' : (searchParams.city || '不限')}</Text>
+                        <Text>{locating ? '定位中...' : (displayCity || '不限')}</Text>
                         <Text className='picker-arrow'>▼</Text>
                       </View>
                     </View>

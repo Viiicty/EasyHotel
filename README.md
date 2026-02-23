@@ -141,7 +141,6 @@ EasyHotel/
 │   │   ├── hotel-submission/ # 酒店提交审核模块
 │   │   ├── room-type/      # 房型模块
 │   │   ├── room-type-price-daily/ # 房型价格日历模块
-│   │   ├── amenity/       # 设施模块
 │   │   ├── user/           # 用户模块
 │   │   ├── upload/         # 文件上传模块
 │   │   └── common/         # 公共模块

@@ -30,6 +30,7 @@ interface StarLevel {
 interface IndexState {
   bannerList: Banner[]
   searchParams: SearchParams
+  displayCity: string
   starLevels: StarLevel[]
   availableTags: string[]
   recommendHotels: Hotel[]
@@ -86,6 +87,7 @@ export default class Index extends Component<{}, IndexState> {
       starLevel: 0,
       tags: []
     },
+    displayCity: '',
     hotelTags: [],
     availableTags: [],
     recommendHotels: [],
@@ -513,7 +515,8 @@ export default class Index extends Component<{}, IndexState> {
         const result = res.data.data.regeocode
         const addressComponent = result.addressComponent
         const province = addressComponent.province
-        const city = (addressComponent.city && addressComponent.city.length > 0) ? addressComponent.city : addressComponent.province
+        const originalCity = (addressComponent.city && addressComponent.city.length > 0) ? addressComponent.city : addressComponent.province
+        let city = originalCity.replace(/市$/, '')
         const district = addressComponent.district
         const township = addressComponent.township
         const street = addressComponent.streetNumber && addressComponent.street ? `${addressComponent.street}${addressComponent.streetNumber}` : addressComponent.street
@@ -521,16 +524,17 @@ export default class Index extends Component<{}, IndexState> {
 
         const cityPinyin = this.cityPinyinMap[city] || city.toLowerCase()
 
-        const isDirectCity = province === city
+        const isDirectCity = province === originalCity
         const displayAddress = isDirectCity 
-          ? `${city}，${district}` 
-          : `${province}，${city}，${district}`
+          ? `${originalCity}，${district}` 
+          : `${province}，${originalCity}，${district}`
 
         this.setState({
           searchParams: {
             ...this.state.searchParams,
             city: cityPinyin
           },
+          displayCity: city,
           locationBubble: {
             visible: true,
             city: city,
@@ -650,11 +654,13 @@ export default class Index extends Component<{}, IndexState> {
   }
 
   handleCitySelect = (city) => {
+    const cityPinyin = city === '不限' ? '' : (this.cityPinyinMap[city] || city.toLowerCase())
     this.setState(prevState => ({
       searchParams: {
         ...prevState.searchParams,
-        city: city === '不限' ? '' : city
-      }
+        city: cityPinyin
+      },
+      displayCity: city === '不限' ? '' : city
     }))
   }
 
@@ -744,7 +750,7 @@ export default class Index extends Component<{}, IndexState> {
 
 
   render() {
-    const { bannerList, recommendHotels, availableTags, pendingOrder, remainingTime, searchParams, showPriceModal, showStarModal, showCityModal, locationBubble, bookmarkPosition } = this.state
+    const { bannerList, recommendHotels, availableTags, pendingOrder, remainingTime, searchParams, displayCity, showPriceModal, showStarModal, showCityModal, locationBubble, bookmarkPosition } = this.state
     const isLoading = bannerList.length === 0 || recommendHotels.length === 0 || availableTags.length === 0
 
     return (
@@ -788,7 +794,7 @@ export default class Index extends Component<{}, IndexState> {
                 <Text className='form-label'>城市</Text>
                 <View className='form-value-row'>
                   <View className='form-value' onClick={this.handleCityClick}>
-                    <Text>{this.state.searchParams.city || '不限'}</Text>
+                    <Text>{this.state.displayCity || '不限'}</Text>
                     <Text className='arrow'>▼</Text>
                   </View>
                   <View className='location-btn' onClick={this.handleLocationClick}>
@@ -951,7 +957,7 @@ export default class Index extends Component<{}, IndexState> {
 
         <CitySelector
           visible={showCityModal}
-          selectedCity={searchParams.city}
+          selectedCity={displayCity}
           onConfirm={this.handleCitySelect}
           onClose={this.handleCityCancel}
         />
