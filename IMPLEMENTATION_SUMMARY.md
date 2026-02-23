@@ -155,6 +155,9 @@ EasyHotel 是一个基于 NestJS 和 Taro 的易宿酒店预订系统，包含�
 #### 核心文件
 - `min/src/pages/hotel/list.tsx` - 酒店列表组件
 - `min/src/pages/hotel/list.scss` - 酒店列表样式
+- `min/src/components/city-selector/city-selector.tsx` - 城市选择器组件
+- `min/src/components/price-selector/price-selector.tsx` - 价格选择器组件
+- `min/src/components/star-selector/star-selector.tsx` - 星级选择器组件
 
 #### 功能说明
 - 展示符合条件的酒店列表
@@ -163,6 +166,25 @@ EasyHotel 是一个基于 NestJS 和 Taro 的易宿酒店预订系统，包含�
 - 点击跳转到酒店详情页
 - 日期选择器（入住/退房日期）
 - 日期同步到详情页
+- **下拉抽屉筛选**：
+  - 点击城市/日期区域显示下拉抽屉
+  - 城市选项：点击地球图标🌏触发定位，点击选项框打开城市选择器组件
+  - 入住/退房日期：点击打开日历组件
+  - 价格选项：点击打开价格选择器组件
+  - 星级选项：点击打开星级选择器组件
+  - 确认搜索按钮应用筛选条件
+- **定位功能**：
+  - 点击地球图标触发定位
+  - 自动获取用户位置
+  - 调用高德地图API获取省市区信息
+  - 自动更新城市选项框
+  - 定位中显示"定位中..."和📍图标
+  - 定位成功后显示提示"已定位到{城市}"
+- **组件复用**：
+  - 使用CitySelector组件进行城市选择
+  - 使用PriceSelector组件进行价格选择
+  - 使用StarSelector组件进行星级选择
+  - 与首页保持一致的交互体验
 
 ---
 
@@ -372,6 +394,135 @@ git push -u origin main
 - ✅ `.env` 文件不会上传（在 `.gitignore` 中）
 - ✅ `node_modules` 不会上传
 - ✅ `dist` 和 `build` 目录不会上传
+
+---
+
+## 11. 组件系统
+
+### 11.1 城市选择器组件
+
+#### 核心文件
+- `min/src/components/city-selector/city-selector.tsx` - 城市选择器组件
+- `min/src/components/city-selector/city-selector.scss` - 城市选择器样式
+
+#### 功能说明
+- **组件类型**：底部抽屉式选择器
+- **城市列表**：支持25个主要城市（北京、上海、广州、深圳、杭州、成都等）
+- **选中状态**：当前选中的城市高亮显示
+- **确认按钮**：点击确认后关闭组件并返回选中的城市
+- **取消按钮**：点击取消关闭组件
+
+#### Props 接口
+```typescript
+interface CitySelectorProps {
+  visible: boolean           // 组件显示状态
+  selectedCity: string      // 当前选中的城市
+  onConfirm: (city: string) => void  // 确认回调
+  onClose: () => void      // 关闭回调
+}
+```
+
+#### 使用示例
+```tsx
+<CitySelector
+  visible={showCityModal}
+  selectedCity={searchParams.city}
+  onConfirm={this.handleCitySelect}
+  onClose={this.handleCityCancel}
+/>
+```
+
+---
+
+### 11.2 价格选择器组件
+
+#### 核心文件
+- `min/src/components/price-selector/price-selector.tsx` - 价格选择器组件
+- `min/src/components/price-selector/price-selector.scss` - 价格选择器样式
+
+#### 功能说明
+- **组件类型**：底部抽屉式选择器
+- **价格范围**：支持设置最低价格和最高价格
+- **预设选项**：提供常用价格范围快速选择（0-200、200-500、500-1000、1000-2000、2000以上）
+- **输入验证**：最低价格不能大于最高价格
+- **确认按钮**：点击确认后关闭组件并返回价格范围
+
+#### Props 接口
+```typescript
+interface PriceSelectorProps {
+  visible: boolean           // 组件显示状态
+  minPrice: number         // 最低价格
+  maxPrice: number         // 最高价格
+  onConfirm: (minPrice: number, maxPrice: number) => void  // 确认回调
+  onClose: () => void      // 关闭回调
+}
+```
+
+#### 使用示例
+```tsx
+<PriceSelector
+  visible={showPriceModal}
+  minPrice={searchParams.minPrice}
+  maxPrice={searchParams.maxPrice}
+  onConfirm={this.handlePriceConfirm}
+  onClose={this.handlePriceCancel}
+/>
+```
+
+---
+
+### 11.3 星级选择器组件
+
+#### 核心文件
+- `min/src/components/star-selector/star-selector.tsx` - 星级选择器组件
+- `min/src/components/star-selector/star-selector.scss` - 星级选择器样式
+
+#### 功能说明
+- **组件类型**：底部抽屉式选择器
+- **星级选择**：支持1-5星选择
+- **交互方式**：点击星星选中对应星级
+- **视觉反馈**：选中的星星高亮显示为黄色
+- **不限选项**：支持选择"不限"（0星）
+
+#### Props 接口
+```typescript
+interface StarSelectorProps {
+  visible: boolean           // 组件显示状态
+  starLevel: number        // 当前星级
+  onConfirm: (starLevel: number) => void  // 确认回调
+  onClose: () => void      // 关闭回调
+}
+```
+
+#### 使用示例
+```tsx
+<StarSelector
+  visible={showStarModal}
+  starLevel={searchParams.starLevel}
+  onConfirm={this.handleStarConfirm}
+  onClose={this.handleStarCancel}
+/>
+```
+
+---
+
+### 11.4 组件复用策略
+
+#### 复用场景
+- **首页**：使用城市、价格、星级选择器
+- **酒店列表页**：使用城市、价格、星级选择器
+- **酒店详情页**：使用城市、价格、星级选择器
+
+#### 统一体验
+- 所有选择器使用相同的交互模式（底部抽屉）
+- 相同的确认/取消按钮样式
+- 相同的动画效果
+- 相同的关闭逻辑
+
+#### 状态管理
+- 每个页面独立管理选择器的显示状态
+- 选择器关闭时自动更新搜索参数
+- 选择器确认后自动关闭下拉抽屉
 
 ---
 
@@ -663,13 +814,17 @@ export class OrderExpiryProcessor {
 ✅ 完整的项目文档
 ✅ GitHub 上传准备
 ✅ 小程序首页（轮播图、推荐酒店、搜索、定位）
-✅ 酒店列表页
+✅ 酒店列表页（下拉抽屉筛选、组件复用）
 ✅ 酒店详情页
 ✅ 预订功能
 ✅ 订单管理
 ✅ 用户认证
 ✅ 商户管理端
 ✅ 定位功能（高德地图 API）
+✅ 城市选择器组件
+✅ 价格选择器组件
+✅ 星级选择器组件
+✅ 组件复用机制
 
 ### 技术亮点
 ✅ 精确的延迟任务（60秒）

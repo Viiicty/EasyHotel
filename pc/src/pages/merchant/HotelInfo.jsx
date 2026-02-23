@@ -4,12 +4,42 @@ import {
   UploadOutlined,
   SaveOutlined,
   StarOutlined,
-  PlusOutlined
+  PlusOutlined,
+  AimOutlined
 } from '@ant-design/icons'
+import LocationPicker from '../../components/LocationPicker'
 
 const { TextArea } = Input
 
 const API_BASE = '/api'
+
+// 城市列表
+const cityOptions = [
+  { value: 'beijing', label: '北京' },
+  { value: 'shanghai', label: '上海' },
+  { value: 'guangzhou', label: '广州' },
+  { value: 'shenzhen', label: '深圳' },
+  { value: 'hangzhou', label: '杭州' },
+  { value: 'chengdu', label: '成都' },
+  { value: 'chongqing', label: '重庆' },
+  { value: 'wuhan', label: '武汉' },
+  { value: 'xian', label: '西安' },
+  { value: 'nanjing', label: '南京' },
+  { value: 'suzhou', label: '苏州' },
+  { value: 'tianjin', label: '天津' },
+  { value: 'qingdao', label: '青岛' },
+  { value: 'xiamen', label: '厦门' },
+  { value: 'dalian', label: '大连' },
+  { value: 'sanya', label: '三亚' },
+  { value: 'lijiang', label: '丽江' },
+  { value: 'guilin', label: '桂林' },
+  { value: 'kunming', label: '昆明' },
+  { value: 'changsha', label: '长沙' },
+  { value: 'zhengzhou', label: '郑州' },
+  { value: 'jinan', label: '济南' },
+  { value: 'shenyang', label: '沈阳' },
+  { value: 'haerbin', label: '哈尔滨' }
+]
 
 function HotelInfo() {
   const [form] = Form.useForm()
@@ -306,11 +336,12 @@ function HotelInfo() {
                 name="city"
                 rules={[{ required: true, message: '请选择城市' }]}
               >
-                <Select placeholder="请选择城市">
-                  <Select.Option value="beijing">北京</Select.Option>
-                  <Select.Option value="shanghai">上海</Select.Option>
-                  <Select.Option value="hangzhou">杭州</Select.Option>
-                  <Select.Option value="guangzhou">广州</Select.Option>
+                <Select placeholder="请选择城市" showSearch optionFilterProp="label">
+                  {cityOptions.map(city => (
+                    <Select.Option key={city.value} value={city.value} label={city.label}>
+                      {city.label}
+                    </Select.Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>
@@ -383,8 +414,8 @@ function HotelInfo() {
             <TextArea rows={3} placeholder="请输入酒店地址" />
           </Form.Item>
 
-          <Row gutter={[16, 16]}>
-            <Col span={12}>
+          <Row gutter={[16, 16]} align="middle">
+            <Col span={10}>
               <Form.Item
                 label="经度"
                 name="lng"
@@ -392,12 +423,20 @@ function HotelInfo() {
                 <Input placeholder="请输入经度" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col span={10}>
               <Form.Item
                 label="纬度"
                 name="lat"
               >
                 <Input placeholder="请输入纬度" />
+              </Form.Item>
+            </Col>
+            <Col span={4}>
+              <Form.Item label=" ">
+                <LocationPicker 
+                  form={form} 
+                  fieldNames={{ lat: 'lat', lng: 'lng', city: 'city', address: 'address' }}
+                />
               </Form.Item>
             </Col>
           </Row>

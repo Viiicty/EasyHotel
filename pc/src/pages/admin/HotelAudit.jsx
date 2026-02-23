@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Table, Button, Space, Tag, Modal, Form, Input, Select, DatePicker, message, Descriptions, Drawer, Row, Col, Tabs } from 'antd'
+import { Card, Table, Button, Space, Tag, Modal, Form, Input, Select, DatePicker, message, Descriptions, Drawer, Row, Col, Tabs, Image } from 'antd'
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -18,6 +18,7 @@ function HotelAudit() {
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [selectedSubmission, setSelectedSubmission] = useState(null)
+  const [roomTypePictures, setRoomTypePictures] = useState([])
   const [auditForm] = Form.useForm()
   const [users, setUsers] = useState({})
   const [hotels, setHotels] = useState({})
@@ -81,9 +82,12 @@ function HotelAudit() {
           hotelMap[hotel.id] = hotel.nameZh || hotel.name || '未知酒店'
         })
         setHotels(hotelMap)
+        return hotelMap
       }
+      return {}
     } catch (error) {
       console.error('Error fetching hotels:', error)
+      return {}
     }
   }
 
@@ -151,8 +155,6 @@ function HotelAudit() {
         url = `/api/hotel-submission/hotel/${id}`
       } else if (tab === 'roomtype') {
         url = `/api/hotel-submission/roomtype/${id}`
-      } else if (tab === 'roomprice') {
-        url = `/api/hotel-submission/roompricecalendar/${id}`
       }
       
       const response = await fetch(url, {
@@ -174,7 +176,7 @@ function HotelAudit() {
   const fetchRoomTypes = async () => {
     setLoading(true)
     try {
-      await fetchHotelsMap()
+      const hotelMap = await fetchHotelsMap()
       
       const token = getToken()
       const response = await fetch(`/api/room-type`, {
@@ -189,7 +191,7 @@ function HotelAudit() {
           key: item.id,
           id: item.id,
           hotelId: item.hotelId,
-          hotelName: hotels[item.hotelId] || '未知酒店',
+          hotelName: hotelMap[item.hotelId] || '未知酒店',
           name: item.name || '未知房型',
           bedType: item.bedType || '-',
           breakfast: item.breakfast || '-',
@@ -219,57 +221,11 @@ function HotelAudit() {
     }
   }
 
-  const fetchRoomPrices = async () => {
-    setLoading(true)
-    try {
-      const token = getToken()
-      const response = await fetch(`/api/room-price-calendar`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      if (response.ok) {
-        const result = await response.json()
-        console.log(result)
-        const formattedData = (result.data || []).map(item => ({
-          key: item.id,
-          id: item.id,
-          ratePlanId: item.ratePlanId || '-',
-          date: item.date ? new Date(item.date).toLocaleDateString('zh-CN') : '-',
-          price: item.price || '-',
-          inventory: item.inventory || '-',
-          createdAt: item.createdTime ? new Date(item.createdTime).toLocaleString('zh-CN') : '-',
-          createdBy: item.createdBy,
-          status: '待审核',
-          reviewedBy: item.updatedBy,
-          rejectReason: '-',
-        }))
-        
-        setDataSource(formattedData)
-        
-        const userIds = formattedData.flatMap(item => [item.createdBy, item.reviewedBy])
-        fetchUsers(userIds)
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('API Error:', response.status, errorData)
-        message.error(errorData.message || '获取房价列表失败')
-      }
-    } catch (error) {
-      console.error('Failed to fetch room prices:', error)
-      message.error('网络错误，请检查后端服务是否启动')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const fetchData = () => {
     if (activeTab === 'hotel') {
       fetchHotels()
     } else if (activeTab === 'roomtype') {
       fetchRoomTypes()
-    } else if (activeTab === 'roomprice') {
-      fetchRoomPrices()
     }
   }
 
@@ -513,88 +469,9 @@ function HotelAudit() {
     },
   ]
 
-  const roomPriceColumns = [
-    {
-      title: '价格方案ID',
-      dataIndex: 'ratePlanId',
-      key: 'ratePlanId',
-      width: 200,
-    },
-    {
-      title: '日期',
-      dataIndex: 'date',
-      key: 'date',
-      width: 120,
-    },
-    {
-      title: '价格',
-      dataIndex: 'price',
-      key: 'price',
-      width: 100,
-    },
-    {
-      title: '库存',
-      dataIndex: 'inventory',
-      key: 'inventory',
-      width: 100,
-    },
-    {
-      title: '提交时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 180,
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 120,
-      render: (status) => (
-        <Tag icon={getStatusIcon(status)} color={getStatusColor(status)}>
-          {getStatusText(status)}
-        </Tag>
-      ),
-    },
-    {
-      title: '审核人',
-      dataIndex: 'reviewedBy',
-      key: 'reviewedBy',
-      width: 100,
-      render: (_, record) => users[record.reviewedBy] || record.reviewedBy || '-',
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 200,
-      fixed: 'right',
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewDetail(record)}
-          >
-            查看详情
-          </Button>
-          {record.status === '待审核' && (
-            <Button
-              type="link"
-              size="small"
-              onClick={() => handleAudit(record)}
-            >
-              审核
-            </Button>
-          )}
-        </Space>
-      ),
-    },
-  ]
-
   const getColumns = () => {
     if (activeTab === 'hotel') return hotelColumns
     if (activeTab === 'roomtype') return roomTypeColumns
-    if (activeTab === 'roomprice') return roomPriceColumns
     return hotelColumns
   }
 
@@ -602,6 +479,39 @@ function HotelAudit() {
     setSelectedRecord(record)
     console.log("record：", record)
     fetchsubmission(record.id, activeTab)
+    
+    if (activeTab === 'roomtype') {
+      try {
+        const token = getToken()
+        console.log('Fetching room type pictures for:', record.id)
+        const response = await fetch(`/api/roomtype-picture/room-type/${record.id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        console.log('Response status:', response.status)
+        if (response.ok) {
+          const result = await response.json()
+          console.log('Room type pictures result:', result)
+          const pictures = result.data || []
+          console.log('Setting roomTypePictures:', pictures)
+          setRoomTypePictures(pictures)
+        } else {
+          console.error('Failed to fetch room type pictures, status:', response.status)
+          setRoomTypePictures([])
+        }
+      } catch (error) {
+        console.error('Failed to fetch room type pictures:', error)
+        setRoomTypePictures([])
+      }
+    } else {
+      setRoomTypePictures([])
+    }
+    
+    const userIds = [record.createdBy, record.reviewedBy].filter(id => id)
+    await fetchUsers(userIds)
+    
     setIsDetailDrawerOpen(true)
   }
 
@@ -625,12 +535,6 @@ function HotelAudit() {
         }
       } else if (activeTab === 'roomtype') {
         url = `/api/room-type/audit/${selectedRecord.id}`
-        data = {
-          status: values.action === 'approve' ? 'APPROVED' : 'REJECTED',
-          rejectReason: values.reason || '',
-        }
-      } else if (activeTab === 'roomprice') {
-        url = `/api/room-price-calendar/audit/${selectedRecord.id}`
         data = {
           status: values.action === 'approve' ? 'APPROVED' : 'REJECTED',
           rejectReason: values.reason || '',
@@ -728,19 +632,6 @@ function HotelAudit() {
               />
             </TabPane>
             <TabPane tab="房型管理" key="roomtype">
-              <Table
-                dataSource={filteredDataSource}
-                columns={getColumns()}
-                loading={loading}
-                pagination={{
-                  pageSize: 10,
-                  showSizeChanger: true,
-                  showTotal: (total) => `共 ${total} 条`,
-                }}
-                scroll={{ x: 1400 }}
-              />
-            </TabPane>
-            <TabPane tab="房态房价" key="roomprice">
               <Table
                 dataSource={filteredDataSource}
                 columns={getColumns()}
@@ -895,45 +786,28 @@ function HotelAudit() {
               </Descriptions>
             </Card>
 
-            <Card title="审核信息" bordered={false}>
-              <Descriptions column={1} bordered>
-                <Descriptions.Item label="审核人">
-                  {users[selectedSubmission?.reviewedBy] || selectedRecord?.reviewedBy || '-'}
-                </Descriptions.Item>
-                {selectedSubmission?.status === 'REJECTED' && (
-                  <Descriptions.Item label="驳回原因">
-                    {selectedSubmission?.rejectReason}
-                  </Descriptions.Item>
-                )}
-              </Descriptions>
-            </Card>
-          </Space>
-        )}
-        {selectedRecord && activeTab === 'roomprice' && (
-          <Space direction="vertical" style={{ width: '100%' }} size="large">
-            <Card title="房价信息" bordered={false}>
-              <Descriptions column={2} bordered>
-                <Descriptions.Item label="价格方案ID" span={2}>
-                  {selectedRecord.ratePlanId}
-                </Descriptions.Item>
-                <Descriptions.Item label="日期">
-                  {selectedRecord.date}
-                </Descriptions.Item>
-                <Descriptions.Item label="价格">
-                  {selectedRecord.price}
-                </Descriptions.Item>
-                <Descriptions.Item label="库存">
-                  {selectedRecord.inventory}
-                </Descriptions.Item>
-                <Descriptions.Item label="提交时间">
-                  {selectedRecord.createdAt}
-                </Descriptions.Item>
-                <Descriptions.Item label="审核状态">
-                  <Tag icon={getStatusIcon(selectedRecord.status)} color={getStatusColor(selectedRecord.status)}>
-                    {getStatusText(selectedRecord.status)}
-                  </Tag>
-                </Descriptions.Item>
-              </Descriptions>
+            <Card title="房型图片" bordered={false}>
+              {console.log('Rendering roomTypePictures:', roomTypePictures, 'length:', roomTypePictures.length)}
+              {roomTypePictures.length > 0 ? (
+                <Image.PreviewGroup>
+                  <Space wrap>
+                    {roomTypePictures.map((pic, index) => (
+                      <Image
+                        key={pic.id || index}
+                        width={120}
+                        height={120}
+                        src={`/api/upload/roompicture/${pic.url}`}
+                        alt={`房型图片${index + 1}`}
+                        style={{ objectFit: 'cover' }}
+                      />
+                    ))}
+                  </Space>
+                </Image.PreviewGroup>
+              ) : (
+                <div style={{ color: '#999', padding: '20px', textAlign: 'center' }}>
+                  暂无房型图片
+                </div>
+              )}
             </Card>
 
             <Card title="审核信息" bordered={false}>

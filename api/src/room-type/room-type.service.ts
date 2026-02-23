@@ -164,10 +164,12 @@ export class RoomTypeService {
         'roomType.breakfast',
         'roomType.areaSqm',
         'roomType.maxGuests',
-        'roomType.status'
+        'roomType.status',
+        'roomType.defaultPrice'
       ])
       .where('roomType.hotelId = :hotelId', { hotelId })
       .andWhere('roomType.status = :status', { status: 'APPROVED' })
+      .orderBy('roomType.defaultPrice', 'ASC')
       .getMany();
 
     return roomTypes.map(roomType => ({
@@ -177,7 +179,8 @@ export class RoomTypeService {
       breakfast: roomType.breakfast,
       areaSqm: roomType.areaSqm,
       maxGuests: roomType.maxGuests,
-      status: roomType.status
+      status: roomType.status,
+      defaultPrice: roomType.defaultPrice || 0
     }));
   }
 

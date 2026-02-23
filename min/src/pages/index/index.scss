@@ -2,6 +2,8 @@
   min-height: 100vh;
   background-color: #f5f5f5;
   padding-bottom: 120px;
+  border: none;
+  box-shadow: none;
 
   .location-bubble {
     position: fixed;
@@ -173,18 +175,29 @@
         flex: 1;
         height: 80px;
         line-height: 80px;
-        border-radius: 8px;
-        font-size: 24px;
+        border-radius: 40px;
+        font-size: 28px;
+        font-weight: 500;
         border: none;
+        transition: all 0.2s;
 
         &.cancel-btn {
           background-color: #f5f5f5;
           color: #666;
+
+          &:active {
+            background-color: #e8e8e8;
+          }
         }
 
         &.confirm-btn {
-          background-color: #1890ff;
+          background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
           color: #fff;
+          box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+
+          &:active {
+            background: linear-gradient(135deg, #096dd9 0%, #0050b3 100%);
+          }
         }
       }
     }
@@ -192,9 +205,26 @@
 }
 
 .banner-section {
+  border: none;
+  box-shadow: none;
+  position: relative;
+
+  .banner-gradient-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(to bottom, transparent 0%, #f5f5f5 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
   .banner-swiper {
-    height: 300px;
+    height: 370px;
     width: 100%;
+    border: none;
+    box-shadow: none;
 
     .banner-item {
       width: 100%;
@@ -203,11 +233,18 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;
+      overflow: visible;
+      border: none;
+      box-shadow: none;
+      outline: none;
     }
 
     .banner-image {
       width: 100%;
       height: 100%;
+      border: none;
+      box-shadow: none;
     }
 
     .banner-text {
@@ -232,39 +269,15 @@
   }
 }
 
-.pending-banner {
-  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
-  padding: 15px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
-  margin: 0;
-  border-radius: 0;
-  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-
-  .banner-text {
-    color: #fff;
-    font-size: 16px;
-    font-weight: 500;
-  }
-
-  .banner-time {
-    color: #fff;
-    font-size: 20px;
-    font-weight: bold;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 4px 12px;
-    border-radius: 4px;
-  }
-}
-
 .search-section {
   background-color: #fff;
-  margin: 20px 30px;
+  margin: 0 30px;
+  margin-top: -40px;
   border-radius: 20px;
   padding: 30px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  position: relative;
+  z-index: 2;
 
   .search-title {
     margin-bottom: 24px;
@@ -372,6 +385,32 @@
         color: #333;
         height: 88px;
         box-sizing: border-box;
+      }
+
+      .input-wrapper {
+        position: relative;
+        width: 100%;
+        height: 88px;
+        background-color: #f5f5f5;
+        border-radius: 12px;
+        box-sizing: border-box;
+
+        .input-placeholder {
+          position: absolute;
+          left: 24px;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 30px;
+          color: #999;
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        .form-input {
+          position: relative;
+          z-index: 2;
+          background-color: transparent !important;
+        }
       }
 
       .tags-container {
@@ -628,10 +667,12 @@
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
       display: flex;
       gap: 20px;
+      min-height: 200px;
 
       .hotel-cover {
         width: 200px;
-        height: 150px;
+        height: 300px;
+        min-height: 200px;
         border-radius: 12px;
         flex-shrink: 0;
         background-color: #f0f0f0;
@@ -713,5 +754,36 @@
       font-size: 28px;
       color: #999;
     }
+  }
+}
+
+.pending-bookmark {
+  position: fixed;
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 1001;
+  cursor: pointer;
+  will-change: transform, left, top;
+
+  &:active {
+    box-shadow: 0 6px 16px rgba(255, 107, 107, 0.6);
+  }
+
+  .bookmark-icon {
+    font-size: 32px;
+  }
+
+  .bookmark-time {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
   }
 }

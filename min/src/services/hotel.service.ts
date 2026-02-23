@@ -66,11 +66,20 @@ export interface RoomType {
   areaSqm?: number
   maxGuests?: number
   status: string
+  defaultPrice?: number
 }
 
 export interface HotelImage {
   id: string
   hotelId: string
+  url: string
+  sortNo: number
+}
+
+export interface RoomTypePicture {
+  id: string
+  hotelId: string
+  roomTypeId: string
   url: string
   sortNo: number
 }
@@ -287,6 +296,21 @@ export const hotelService = {
       return res.data.data || []
     } catch (error) {
       console.error('获取酒店图片失败:', error)
+      return []
+    }
+  },
+
+  async getRoomTypePictures(roomTypeId: string): Promise<RoomTypePicture[]> {
+    try {
+      const res = await request({
+        url: `${BASE_URL}/roomtype-picture/room-type/${roomTypeId}`,
+        method: 'GET'
+      })
+      console.log('getRoomTypePictures response:', res)
+      console.log('getRoomTypePictures res.data:', res.data)
+      return res.data.data || []
+    } catch (error) {
+      console.error('获取房型图片失败:', error)
       return []
     }
   }

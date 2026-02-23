@@ -252,12 +252,33 @@
       .search-hotel-name {
         min-width: 200px;
 
-        .hotel-name-input {
-          padding: 12px 20px;
+        .hotel-name-wrapper {
+          position: relative;
+          width: 100%;
           background-color: #f5f5f5;
           border-radius: 8px;
-          font-size: 28px;
-          color: #333;
+          box-sizing: border-box;
+
+          .hotel-name-placeholder {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 28px;
+            color: #999;
+            pointer-events: none;
+            z-index: 1;
+          }
+
+          .hotel-name-input {
+            position: relative;
+            z-index: 2;
+            padding: 12px 20px;
+            background-color: transparent !important;
+            border-radius: 8px;
+            font-size: 28px;
+            color: #333;
+          }
         }
       }
     }
@@ -310,6 +331,28 @@
         }
       }
 
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 30px;
+        border-bottom: 1px solid #f0f0f0;
+
+        .panel-title {
+          flex: 1;
+          text-align: center;
+          font-size: 32px;
+          color: #333;
+          font-weight: 500;
+        }
+
+        .panel-close {
+          font-size: 40px;
+          color: #999;
+          padding: 10px;
+        }
+      }
+
       .panel-scroll {
         max-height: 60vh;
       }
@@ -346,6 +389,20 @@
               color: #999;
             }
           }
+
+          .location-icon {
+            font-size: 36px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s;
+
+            &:active {
+              background-color: #f0f0f0;
+              transform: scale(0.95);
+            }
+          }
+        }
 
           &.price-slider-panel {
             flex-direction: column;
@@ -696,7 +753,7 @@
       color: #999;
     }
   }
-}
+
 
 .price-mask {
   position: fixed;

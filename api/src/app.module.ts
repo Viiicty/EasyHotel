@@ -14,6 +14,7 @@ import { UploadModule } from './upload/upload.module';
 import { BookingModule } from './booking/booking.module';
 import { OrderModule } from './order/order.module';
 import { QueueModule } from './queue/queue.module';
+import { RoomtypePictureModule } from './roomtype-picture/roomtype-picture.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { QueueModule } from './queue/queue.module';
     BookingModule,
     OrderModule,
     QueueModule,
+    RoomtypePictureModule,
   ],
   providers: [
     {

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, Image, Button, ScrollView, Picker, Swiper, SwiperItem } from '@tarojs/components'
 import Taro, { getCurrentInstance, useDidShow } from '@tarojs/taro'
-import { hotelService, HotelDetail, RoomType, HotelImage } from '../../services/hotel.service'
+import { hotelService, HotelDetail, RoomType, HotelImage, RoomTypePicture } from '../../services/hotel.service'
 import { userService } from '../../services/user.service'
 import { bookingService } from '../../services/booking.service'
+import { orderService } from '../../services/order.service'
 import Calendar from '../../components/calendar/calendar'
 import Skeleton from '../../components/skeleton/skeleton'
 import './index.scss'
@@ -35,6 +36,7 @@ export default function HotelDetailPage() {
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [hotelImages, setHotelImages] = useState<HotelImage[]>([])
   const [roomInventories, setRoomInventories] = useState<RoomInventory[]>([])
+  const [roomTypePictures, setRoomTypePictures] = useState<{ [key: string]: RoomTypePicture[] }>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [checkIn, setCheckIn] = useState(getTodayDate())
@@ -47,6 +49,17 @@ export default function HotelDetailPage() {
   const [showGuestPanel, setShowGuestPanel] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [isFirstLoad, setIsFirstLoad] = useState(true)
+  const [pendingOrder, setPendingOrder] = useState<any>(null)
+  const [remainingTime, setRemainingTime] = useState(0)
+  const [bookmarkPosition, setBookmarkPosition] = useState({ x: 300, y: 600 })
+  const [isDragging, setIsDragging] = useState(false)
+  const rafId = useRef<any>(null)
+  const countdownTimer = useRef<any>(null)
+  const isLoadingPendingOrder = useRef(false)
+  const startX = useRef<number>(0)
+  const startY = useRef<number>(0)
+  const startPositionX = useRef<number>(0)
+  const startPositionY = useRef<number>(0)
 
   const instance = getCurrentInstance()
 
@@ -59,6 +72,9 @@ export default function HotelDetailPage() {
 
     let finalCheckIn = getTodayDate()
     let finalCheckOut = getTomorrowDate()
+    let finalRooms = 1
+    let finalAdults = 1
+    let finalChildren = 0
 
     if (params?.checkIn && params?.checkOut) {
       console.log('接收到的日期参数:', { checkIn: params.checkIn, checkOut: params.checkOut })
@@ -74,8 +90,21 @@ export default function HotelDetailPage() {
       }
     }
 
+    if (params?.rooms) {
+      finalRooms = parseInt(params.rooms)
+    }
+    if (params?.adults) {
+      finalAdults = parseInt(params.adults)
+    }
+    if (params?.children) {
+      finalChildren = parseInt(params.children)
+    }
+
     setCheckIn(finalCheckIn)
     setCheckOut(finalCheckOut)
+    setRooms(finalRooms)
+    setAdults(finalAdults)
+    setChildren(finalChildren)
 
     const startParts = finalCheckIn.split('-')
     const endParts = finalCheckOut.split('-')
@@ -101,6 +130,9 @@ export default function HotelDetailPage() {
 
     Taro.setStorageSync('selectedCheckIn', finalCheckIn)
     Taro.setStorageSync('selectedCheckOut', finalCheckOut)
+    Taro.setStorageSync('selectedRooms', finalRooms)
+    Taro.setStorageSync('selectedAdults', finalAdults)
+    Taro.setStorageSync('selectedChildren', finalChildren)
 
     if (id) {
       loadHotelDetail(id)
@@ -109,6 +141,21 @@ export default function HotelDetailPage() {
 
   useDidShow(() => {
     console.log('=== HotelDetailPage useDidShow ===')
+    loadPendingOrder()
+
+    const systemInfo = Taro.getSystemInfoSync()
+    const screenWidth = systemInfo.windowWidth
+    const screenHeight = systemInfo.windowHeight
+    const bookmarkSize = 65
+    const margin = 5
+
+    const savedPosition = Taro.getStorageSync('pendingBookmarkPosition')
+
+    setBookmarkPosition(savedPosition || {
+      x: screenWidth - bookmarkSize - margin,
+      y: screenHeight - bookmarkSize - margin
+    })
+
     if (!isFirstLoad) {
       console.log('页面重新显示，刷新数据')
       const params = instance?.router?.params
@@ -123,8 +170,184 @@ export default function HotelDetailPage() {
 
   useEffect(() => {
     return () => {
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current)
+      }
+      if (countdownTimer.current) {
+        clearInterval(countdownTimer.current)
+      }
     }
   }, [])
+
+  useEffect(() => {
+    const systemInfo = Taro.getSystemInfoSync()
+    const screenWidth = systemInfo.windowWidth
+    const screenHeight = systemInfo.windowHeight
+    const bookmarkSize = 65
+    const margin = 5
+
+    const savedPosition = Taro.getStorageSync('pendingBookmarkPosition')
+
+    setBookmarkPosition(savedPosition || {
+      x: screenWidth - bookmarkSize - margin,
+      y: screenHeight - bookmarkSize - margin
+    })
+  }, [])
+
+  const loadPendingOrder = async () => {
+    if (isLoadingPendingOrder.current) {
+      return
+    }
+
+    if (!userService.isLoggedIn()) {
+      setPendingOrder(null)
+      setRemainingTime(0)
+      return
+    }
+
+    isLoadingPendingOrder.current = true
+
+    try {
+      const order = await orderService.getPendingOrder()
+      console.log('=== loadPendingOrder ===')
+      console.log('order:', order)
+      setPendingOrder(order)
+      const time = order?.remainingTime || 0
+      setRemainingTime(time)
+
+      const systemInfo = Taro.getSystemInfoSync()
+      const screenWidth = systemInfo.windowWidth
+      const screenHeight = systemInfo.windowHeight
+      const bookmarkSize = 65
+      const margin = 5
+
+      const savedPosition = Taro.getStorageSync('pendingBookmarkPosition')
+
+      setBookmarkPosition(savedPosition || {
+        x: screenWidth - bookmarkSize - margin,
+        y: screenHeight - bookmarkSize - margin
+      })
+
+      startCountdown()
+    } catch (error) {
+      console.error('加载待支付订单失败:', error)
+      setPendingOrder(null)
+      setRemainingTime(0)
+      startCountdown()
+    } finally {
+      isLoadingPendingOrder.current = false
+    }
+  }
+
+  const startCountdown = () => {
+    if (countdownTimer.current) {
+      clearInterval(countdownTimer.current)
+      countdownTimer.current = null
+    }
+
+    countdownTimer.current = setInterval(() => {
+      setRemainingTime(prev => {
+        if (prev <= 1) {
+          if (countdownTimer.current) {
+            clearInterval(countdownTimer.current)
+            countdownTimer.current = null
+          }
+          setTimeout(() => {
+            loadPendingOrder()
+          }, 100)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  const handleBookmarkClick = () => {
+    if (isDragging) return
+
+    if (pendingOrder) {
+      Taro.navigateTo({
+        url: `/pages/order/detail?orderId=${pendingOrder.orderId}`
+      })
+    }
+  }
+
+  const handleBookmarkTouchStart = (e: any) => {
+    const touch = e.touches[0]
+    startX.current = touch.clientX
+    startY.current = touch.clientY
+    startPositionX.current = bookmarkPosition.x
+    startPositionY.current = bookmarkPosition.y
+    setIsDragging(false)
+  }
+
+  const handleBookmarkTouchMove = (e: any) => {
+    e.stopPropagation()
+    e.preventDefault()
+
+    const touch = e.touches[0]
+    const deltaX = touch.clientX - startX.current
+    const deltaY = touch.clientY - startY.current
+
+    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+      setIsDragging(true)
+    }
+
+    if (rafId.current) {
+      cancelAnimationFrame(rafId.current)
+    }
+
+    rafId.current = requestAnimationFrame(() => {
+      let newX = startPositionX.current + deltaX
+      let newY = startPositionY.current + deltaY
+
+      const systemInfo = Taro.getSystemInfoSync()
+      const screenWidth = systemInfo.windowWidth
+      const screenHeight = systemInfo.windowHeight
+      const bookmarkSize = 100
+      const margin = 10
+
+      newX = Math.max(margin, Math.min(newX, screenWidth - bookmarkSize - margin))
+      newY = Math.max(margin, Math.min(newY, screenHeight - bookmarkSize - margin))
+
+      setBookmarkPosition({ x: newX, y: newY })
+    })
+  }
+
+  const handleBookmarkTouchEnd = () => {
+    if (rafId.current) {
+      cancelAnimationFrame(rafId.current)
+      rafId.current = null
+    }
+
+    const systemInfo = Taro.getSystemInfoSync()
+    const screenWidth = systemInfo.windowWidth
+    const screenHeight = systemInfo.windowHeight
+    const bookmarkSize = 100
+    const bookmarkSize2 = 65
+    const margin = 5
+
+    const centerX = bookmarkPosition.x + bookmarkSize / 2
+    const screenCenterX = screenWidth / 2
+
+    let finalX = bookmarkPosition.x
+    if (centerX < screenCenterX) {
+      finalX = margin
+    } else {
+      finalX = screenWidth - bookmarkSize2
+    }
+
+    setBookmarkPosition({ x: finalX, y: bookmarkPosition.y })
+    setIsDragging(false)
+
+    Taro.setStorageSync('pendingBookmarkPosition', { x: finalX, y: bookmarkPosition.y })
+  }
+
+  const formatCountdown = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${minutes}:${secs.toString().padStart(2, '0')}`
+  }
 
   const loadHotelDetail = async (id: string) => {
     console.log('=== loadHotelDetail START ===')
@@ -158,9 +381,23 @@ export default function HotelDetailPage() {
         hotelImagesData = []
       }
 
+      console.log('Loading room type pictures...')
+      const roomPicturesMap: { [key: string]: RoomTypePicture[] } = {}
+      for (const roomType of roomTypesData) {
+        try {
+          const pictures = await hotelService.getRoomTypePictures(roomType.id)
+          console.log(`Room type ${roomType.id} pictures:`, pictures)
+          roomPicturesMap[roomType.id] = pictures
+        } catch (error) {
+          console.error(`获取房型 ${roomType.id} 图片失败:`, error)
+          roomPicturesMap[roomType.id] = []
+        }
+      }
+
       console.log('Saving to cache...')
       Taro.setStorageSync(cacheKey, hotelDetail)
       Taro.setStorageSync(`${cacheKey}_rooms`, roomTypesData)
+      Taro.setStorageSync(`${cacheKey}_room_pictures`, roomPicturesMap)
 
       const elapsedTime = Date.now() - startTime
       const minSkeletonTime = 800
@@ -171,6 +408,7 @@ export default function HotelDetailPage() {
       setHotel(hotelDetail)
       setRoomTypes(roomTypesData)
       setHotelImages(hotelImagesData)
+      setRoomTypePictures(roomPicturesMap)
       setLoading(false)
 
       console.log('Loading room inventories...')
@@ -361,16 +599,19 @@ export default function HotelDetailPage() {
   }
 
   const handleRoomsChange = (e) => {
-    setRooms(parseInt(e.detail.value))
+    const roomOptions = [1, 2, 3, 4, 5]
+    setRooms(roomOptions[e.detail.value])
     loadRoomInventories(roomTypes)
   }
 
   const handleAdultsChange = (e) => {
-    setAdults(parseInt(e.detail.value))
+    const adultOptions = [1, 2, 3, 4, 5]
+    setAdults(adultOptions[e.detail.value])
   }
 
   const handleChildrenChange = (e) => {
-    setChildren(parseInt(e.detail.value))
+    const childOptions = [0, 1, 2, 3, 4]
+    setChildren(childOptions[e.detail.value])
   }
 
   const handleGuestClick = () => {
@@ -450,21 +691,12 @@ export default function HotelDetailPage() {
     return null
   }
 
-  console.log('=== Hotel Detail Debug ===')
-  console.log('hotel:', hotel)
-  console.log('hotelImages:', hotelImages)
-  console.log('hotel.coverImage:', hotel.coverImage)
-
   let displayImages = []
   if (hotelImages && Array.isArray(hotelImages) && hotelImages.length > 0) {
     displayImages = hotelImages.sort((a, b) => (a.sortNo || 0) - (b.sortNo || 0))
-    console.log('Using hotelImages:', displayImages)
   } else if (hotel.coverImage) {
     displayImages = [{ id: 'default', hotelId: hotel.id, url: hotel.coverImage, sortNo: 0 }]
-    console.log('Using coverImage:', displayImages)
   }
-
-  console.log('displayImages:', displayImages)
 
   return (
     <View className='hotel-detail-container'>
@@ -604,10 +836,34 @@ export default function HotelDetailPage() {
               const showLowStock = remainingQty > 0 && remainingQty <= 4
               const showSoldOut = remainingQty === 0
               const isLoggedIn = userService.isLoggedIn()
+              const price = roomType.defaultPrice || 0
+              
+              // 获取房型图片
+              const roomPictures = roomTypePictures[roomType.id] || []
+              const firstPicture = roomPictures.length > 0 ? roomPictures[0] : null
+              const pictureUrl = firstPicture ? (
+                firstPicture.url.startsWith('http') 
+                  ? firstPicture.url 
+                  : `http://localhost:8888/upload/roompicture/${firstPicture.url}`
+              ) : null
 
               return (
                 <View key={roomType.id} className='room-type-card'>
-                  <View className='room-type-content'>
+                  {pictureUrl ? (
+                    <View className='room-type-image'>
+                      <Image 
+                        className='room-image' 
+                        src={pictureUrl} 
+                        mode='aspectFill' 
+                        lazyLoad 
+                      />
+                    </View>
+                  ) : (
+                    <View className='room-type-image room-type-image-placeholder'>
+                      <Text className='placeholder-text'>暂无图片</Text>
+                    </View>
+                  )}
+                  <View className={`room-type-content ${pictureUrl ? 'with-image' : ''}`}>
                     <Text className='room-name'>{roomType.name}</Text>
                     <View className='room-details'>
                       {roomType.bedType && (
@@ -619,7 +875,7 @@ export default function HotelDetailPage() {
                       {roomType.areaSqm && (
                         <View className='room-detail-item'>
                           <Text className='detail-icon'>📐</Text>
-                          <Text className='detail-text'>{Math.round(parseFloat(roomType.areaSqm))}㎡</Text>
+                          <Text className='detail-text'>{Math.round(parseFloat(String(roomType.areaSqm)))}㎡</Text>
                         </View>
                       )}
                       {roomType.maxGuests && (
@@ -645,13 +901,20 @@ export default function HotelDetailPage() {
                       <Text className='low-stock-text'>仅剩{remainingQty}间</Text>
                     )}
                   </View>
-                  <Button 
-                    className={`book-btn ${isLoggedIn && showSoldOut ? 'book-btn-disabled' : ''}`} 
-                    onClick={() => handleBook(roomType.id)}
-                    disabled={isLoggedIn && showSoldOut}
-                  >
-                    {!isLoggedIn ? '订' : '订'}
-                  </Button>
+                  <View className='room-type-action'>
+                    <View className='price-section'>
+                      <Text className='price-symbol'>¥</Text>
+                      <Text className='price-value'>{Math.round(price)}</Text>
+                      <Text className='price-unit'>起</Text>
+                    </View>
+                    <Button
+                      className={`book-btn ${isLoggedIn && showSoldOut ? 'book-btn-disabled' : ''}`}
+                      onClick={() => handleBook(roomType.id)}
+                      disabled={isLoggedIn && showSoldOut}
+                    >
+                      订
+                    </Button>
+                  </View>
                 </View>
               )
             })
@@ -714,6 +977,24 @@ export default function HotelDetailPage() {
               <Button className='drawer-btn' onClick={handleGuestConfirm}>完成</Button>
             </View>
           </View>
+        </View>
+      )}
+
+      {pendingOrder && remainingTime > 0 && (
+        <View
+          className='pending-bookmark'
+          style={{
+            left: `${bookmarkPosition.x}px`,
+            top: `${bookmarkPosition.y}px`
+          }}
+          onClick={handleBookmarkClick}
+          onTouchStart={handleBookmarkTouchStart}
+          onTouchMove={handleBookmarkTouchMove}
+          onTouchEnd={handleBookmarkTouchEnd}
+          catchTouchMove
+        >
+          <Text className='bookmark-icon'>⏰</Text>
+          <Text className='bookmark-time'>{formatCountdown(remainingTime)}</Text>
         </View>
       )}
     </View>

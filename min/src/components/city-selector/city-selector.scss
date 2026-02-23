@@ -1,0 +1,107 @@
+.city-selector-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+
+  .city-selector-panel {
+    width: 100%;
+    height: 60vh;
+    background-color: #fff;
+    border-radius: 24px 24px 0 0;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s ease-out;
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(100%);
+      }
+      to {
+        transform: translateY(0);
+      }
+    }
+
+    .city-selector-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 30px;
+      border-bottom: 1px solid #f0f0f0;
+
+      .city-selector-title {
+        flex: 1;
+        text-align: center;
+        font-size: 32px;
+        color: #333;
+        font-weight: 500;
+      }
+
+      .city-selector-close {
+        font-size: 40px;
+        color: #999;
+        padding: 10px;
+      }
+    }
+
+    .city-selector-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 -20px 20px 30px;
+
+      .city-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+
+        .city-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 24px 20px;
+          background-color: #f8f9fa;
+          border-radius: 16px;
+          transition: all 0.2s;
+          width: 100%;
+          box-sizing: border-box;
+
+          &:active {
+            background-color: #e9ecef;
+          }
+
+          &.active {
+            background: linear-gradient(135deg, #69c0ff 0%, #40a9ff 100%);
+
+            .city-name {
+              color: #fff;
+              font-weight: 600;
+            }
+
+            .city-check {
+              color: #fff;
+              font-size: 32px;
+              font-weight: bold;
+            }
+          }
+
+          .city-name {
+            font-size: 30px;
+            color: #333;
+            font-weight: 500;
+          }
+
+          .city-check {
+            color: #69c0ff;
+            font-size: 32px;
+            font-weight: bold;
+          }
+        }
+      }
+    }
+  }
+}

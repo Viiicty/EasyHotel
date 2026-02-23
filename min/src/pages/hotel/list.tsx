@@ -4,6 +4,9 @@ import Taro, { getCurrentInstance } from '@tarojs/taro'
 import { Hotel, hotelService } from '../../services/hotel.service'
 import { orderService } from '../../services/order.service'
 import Calendar from '../../components/calendar/calendar'
+import CitySelector from '../../components/city-selector/city-selector'
+import PriceSelector from '../../components/price-selector/price-selector'
+import StarSelector from '../../components/star-selector/star-selector'
 import Skeleton from '../../components/skeleton/skeleton'
 import { debounce } from '../../utils/debounce'
 import './list.scss'
@@ -40,7 +43,9 @@ interface HotelListState {
   isDragging: boolean
   showPriceModal: boolean
   showStarModal: boolean
-
+  showCityModal: boolean
+  isHotelNameFocused: boolean
+  locating: boolean
 }
 
 const getTodayDate = () => {
@@ -62,6 +67,33 @@ const getTomorrowDate = () => {
 
 export default class HotelList extends Component<{}, HotelListState> {
   countdownTimer: any = null
+
+  cityPinyinMap: { [key: string]: string } = {
+    '北京': 'beijing',
+    '上海': 'shanghai',
+    '广州': 'guangzhou',
+    '深圳': 'shenzhen',
+    '杭州': 'hangzhou',
+    '成都': 'chengdu',
+    '重庆': 'chongqing',
+    '武汉': 'wuhan',
+    '西安': 'xian',
+    '南京': 'nanjing',
+    '苏州': 'suzhou',
+    '天津': 'tianjin',
+    '青岛': 'qingdao',
+    '厦门': 'xiamen',
+    '大连': 'dalian',
+    '三亚': 'sanya',
+    '丽江': 'lijiang',
+    '桂林': 'guilin',
+    '昆明': 'kunming',
+    '长沙': 'changsha',
+    '郑州': 'zhengzhou',
+    '济南': 'jinan',
+    '沈阳': 'shenyang',
+    '哈尔滨': 'harbin'
+  }
 
   state: HotelListState = {
     hotels: [],
@@ -89,10 +121,13 @@ export default class HotelList extends Component<{}, HotelListState> {
     calendarType: 'checkIn',
     pendingOrder: null,
     remainingTime: 0,
-    bookmarkPosition: { x: 0, y: 0 },
+    bookmarkPosition: { x: 300, y: 600 },
     isDragging: false,
     showPriceModal: false,
-    showStarModal: false
+    showStarModal: false,
+    showCityModal: false,
+    isHotelNameFocused: false,
+    locating: false
   }
 
   componentDidShow() {
@@ -103,6 +138,9 @@ export default class HotelList extends Component<{}, HotelListState> {
 
     const savedCheckIn = Taro.getStorageSync('selectedCheckIn')
     const savedCheckOut = Taro.getStorageSync('selectedCheckOut')
+    const savedRooms = Taro.getStorageSync('selectedRooms')
+    const savedAdults = Taro.getStorageSync('selectedAdults')
+    const savedChildren = Taro.getStorageSync('selectedChildren')
 
     if (searchParams) {
       try {
@@ -110,6 +148,15 @@ export default class HotelList extends Component<{}, HotelListState> {
         if (savedCheckIn && savedCheckOut) {
           parsedParams.checkIn = savedCheckIn
           parsedParams.checkOut = savedCheckOut
+        }
+        if (savedRooms) {
+          parsedParams.rooms = savedRooms
+        }
+        if (savedAdults) {
+          parsedParams.adults = savedAdults
+        }
+        if (savedChildren) {
+          parsedParams.children = savedChildren
         }
         this.setState({ searchParams: parsedParams }, () => {
           if (hotels) {
@@ -137,18 +184,24 @@ export default class HotelList extends Component<{}, HotelListState> {
         if (currentCheckIn !== savedCheckIn || currentCheckOut !== savedCheckOut) {
           shouldReload = true
         }
-        this.setState(prevState => ({
-          searchParams: {
-            ...prevState.searchParams,
-            checkIn: savedCheckIn,
-            checkOut: savedCheckOut
-          }
-        }), () => {
-          if (shouldReload) {
-            this.loadInitialHotels()
-          }
-        })
       }
+      if (savedRooms || savedAdults || savedChildren) {
+        shouldReload = true
+      }
+      this.setState(prevState => ({
+        searchParams: {
+          ...prevState.searchParams,
+          checkIn: savedCheckIn || prevState.searchParams.checkIn,
+          checkOut: savedCheckOut || prevState.searchParams.checkOut,
+          rooms: savedRooms || prevState.searchParams.rooms,
+          adults: savedAdults || prevState.searchParams.adults,
+          children: savedChildren !== undefined ? savedChildren : prevState.searchParams.children
+        }
+      }), () => {
+        if (shouldReload) {
+          this.loadInitialHotels()
+        }
+      })
       if (hotels) {
         try {
           const parsedHotels = JSON.parse(decodeURIComponent(hotels))
@@ -175,6 +228,21 @@ export default class HotelList extends Component<{}, HotelListState> {
         remainingTime: order?.remainingTime || 0
       }, () => {
         this.startCountdown()
+      })
+
+      const systemInfo = Taro.getSystemInfoSync()
+      const screenWidth = systemInfo.windowWidth
+      const screenHeight = systemInfo.windowHeight
+      const bookmarkSize = 65
+      const margin = 5
+
+      const savedPosition = Taro.getStorageSync('pendingBookmarkPosition')
+
+      this.setState({
+        bookmarkPosition: savedPosition || {
+          x: screenWidth - bookmarkSize - margin,
+          y: screenHeight - bookmarkSize - margin
+        }
       })
     } catch (error) {
       this.setState({ pendingOrder: null, remainingTime: 0 }, () => {
@@ -284,6 +352,8 @@ export default class HotelList extends Component<{}, HotelListState> {
       bookmarkPosition: { x: finalX, y: bookmarkPosition.y },
       isDragging: false
     })
+
+    Taro.setStorageSync('pendingBookmarkPosition', { x: finalX, y: bookmarkPosition.y })
   }
 
   formatCountdown = (seconds: number) => {
@@ -347,6 +417,14 @@ export default class HotelList extends Component<{}, HotelListState> {
     })
   }, 500)
 
+  handleHotelNameFocus = () => {
+    this.setState({ isHotelNameFocused: true })
+  }
+
+  handleHotelNameBlur = () => {
+    this.setState({ isHotelNameFocused: false })
+  }
+
   loadMoreHotels = async () => {
     const { loadingMore, hasMore, page, searchParams, pageSize } = this.state
 
@@ -397,6 +475,120 @@ export default class HotelList extends Component<{}, HotelListState> {
     this.setState({ showCityDatePanel: !this.state.showCityDatePanel, showGuestPanel: false })
   }
 
+  handleCityClick = async () => {
+    this.setState({ locating: true })
+    await this.getCurrentLocation()
+  }
+
+  handleCityPickerClick = () => {
+    this.setState({ showCityModal: true })
+  }
+
+  handleCityCancel = () => {
+    this.setState({ showCityModal: false })
+  }
+
+  getCurrentLocation = async () => {
+    try {
+      const res = await Taro.getLocation({
+        type: 'wgs84'
+      })
+      console.log('位置获取成功:', res)
+      console.log('经纬度:', { latitude: res.latitude, longitude: res.longitude })
+
+      const { latitude, longitude } = res
+      this.reverseGeocode(latitude, longitude)
+    } catch (err) {
+      console.error('=== 定位流程失败 ===')
+      console.error('错误信息:', err)
+      console.error('错误详情:', JSON.stringify(err))
+      
+      if (err.errMsg && err.errMsg.includes('no permission')) {
+        console.log('错误类型: 无权限')
+        Taro.showModal({
+          title: '提示',
+          content: '需要获取您的位置信息来推荐附近酒店，请在设置中开启定位权限',
+          confirmText: '去设置',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              Taro.openSetting()
+            }
+          }
+        })
+      } else if (err.errMsg && err.errMsg.includes('authorize:fail')) {
+        console.log('错误类型: 授权失败')
+        Taro.showToast({
+          title: '授权失败，请重试',
+          icon: 'none'
+        })
+      } else {
+        console.log('错误类型: 其他错误')
+        Taro.showToast({
+          title: '定位失败，请检查定位权限',
+          icon: 'none'
+        })
+      }
+      
+      this.setState({ locating: false })
+    }
+  }
+
+  reverseGeocode = (latitude: number, longitude: number) => {
+    const BASE_URL = 'http://localhost:8888'
+    const AMAP_KEY = 'cbb0e9da5dc2bd7edb1d5cb63af8e039'
+    const url = `${BASE_URL}/mini/hotel/location?location=${longitude},${latitude}&key=${AMAP_KEY}`
+
+    Taro.request({
+      url: url,
+      method: 'GET'
+    }).then(res => {
+      if (res.statusCode === 200 && res.data.code === 200 && res.data.data.status === '1') {
+        const result = res.data.data.regeocode
+        const addressComponent = result.addressComponent
+        const province = addressComponent.province
+        const city = (addressComponent.city && addressComponent.city.length > 0) ? addressComponent.city : addressComponent.province
+        const district = addressComponent.district
+        const township = addressComponent.township
+        const street = addressComponent.streetNumber && addressComponent.street ? `${addressComponent.street}${addressComponent.streetNumber}` : addressComponent.street
+        const formattedAddress = result.formatted_address
+
+        const cityPinyin = this.cityPinyinMap[city] || city.toLowerCase()
+
+        const isDirectCity = province === city
+        const displayAddress = isDirectCity 
+          ? `${city}，${district}` 
+          : `${province}，${city}，${district}`
+
+        this.setState({
+          searchParams: {
+            ...this.state.searchParams,
+            city: city
+          },
+          locating: false
+        })
+
+        Taro.showToast({
+          title: `已定位到${city}`,
+          icon: 'success'
+        })
+      } else {
+        console.error('逆地理编码失败:', res)
+        Taro.showToast({
+          title: '定位失败，请重试',
+          icon: 'none'
+        })
+        this.setState({ locating: false })
+      }
+    }).catch(err => {
+      console.error('请求失败:', err)
+      Taro.showToast({
+        title: '定位失败，请重试',
+        icon: 'none'
+      })
+      this.setState({ locating: false })
+    })
+  }
+
   handleCheckInClick = () => {
     this.setState({ showCalendar: true, calendarType: 'checkIn' })
   }
@@ -407,6 +599,7 @@ export default class HotelList extends Component<{}, HotelListState> {
 
   handleCalendarConfirm = (startDate: string, endDate: string) => {
     this.setState({
+      showCityDatePanel: false,
       searchParams: {
         ...this.state.searchParams,
         checkIn: startDate,
@@ -426,19 +619,14 @@ export default class HotelList extends Component<{}, HotelListState> {
     this.setState({ showGuestPanel: !this.state.showGuestPanel, showCityDatePanel: false })
   }
 
-  handleCityDateMaskClick = () => {
-    this.setState({ showCityDatePanel: false })
-  }
-
-  handleCitySelect = (e) => {
-    const cityOptions = ['不限', '北京', '上海', '广州', '深圳', '杭州', '成都']
-    const selectedCity = cityOptions[e.detail.value]
-    this.setState({
+  handleCitySelect = (city) => {
+    this.setState(prevState => ({
+      showCityDatePanel: false,
       searchParams: {
-        ...this.state.searchParams,
-        city: selectedCity === '不限' ? '' : selectedCity
+        ...prevState.searchParams,
+        city: city === '不限' ? '' : city
       }
-    })
+    }))
   }
 
   handleCheckInChange = (e) => {
@@ -460,28 +648,31 @@ export default class HotelList extends Component<{}, HotelListState> {
   }
 
   handleRoomsChange = (e) => {
+    const roomOptions = [1, 2, 3, 4, 5]
     this.setState({
       searchParams: {
         ...this.state.searchParams,
-        rooms: parseInt(e.detail.value)
+        rooms: roomOptions[e.detail.value]
       }
     })
   }
 
   handleAdultsChange = (e) => {
+    const adultOptions = [1, 2, 3, 4, 5]
     this.setState({
       searchParams: {
         ...this.state.searchParams,
-        adults: parseInt(e.detail.value)
+        adults: adultOptions[e.detail.value]
       }
     })
   }
 
   handleChildrenChange = (e) => {
+    const childOptions = [0, 1, 2, 3, 4]
     this.setState({
       searchParams: {
         ...this.state.searchParams,
-        children: parseInt(e.detail.value)
+        children: childOptions[e.detail.value]
       }
     })
   }
@@ -492,74 +683,41 @@ export default class HotelList extends Component<{}, HotelListState> {
     this.loadInitialHotels()
   }
 
-  handleMinPriceChange = (e) => {
-    const value = parseInt(e.detail.value)
-    this.setState(prevState => ({
-      searchParams: {
-        ...prevState.searchParams,
-        minPrice: Math.min(value, prevState.searchParams.maxPrice - 100)
-      }
-    }))
-  }
-
-  handleMaxPriceChange = (e) => {
-    const value = parseInt(e.detail.value)
-    this.setState(prevState => ({
-      searchParams: {
-        ...prevState.searchParams,
-        maxPrice: Math.max(value, prevState.searchParams.minPrice + 100)
-      }
-    }))
-  }
-
-  handleStarClick = () => {
+  handleStarConfirm = (starLevel: number) => {
     this.setState({
-      showStarModal: true,
+      showStarModal: false,
       showCityDatePanel: false,
-      showGuestPanel: false
+      searchParams: {
+        ...this.state.searchParams,
+        starLevel
+      }
     })
-  }
-
-  handleStarConfirm = () => {
-    this.setState({ showStarModal: false })
   }
 
   handleStarCancel = () => {
     this.setState({ showStarModal: false })
   }
 
-  handleStarSelect = (starLevel) => {
-    this.setState(prevState => ({
-      searchParams: {
-        ...prevState.searchParams,
-        starLevel: starLevel
-      }
-    }))
-  }
-
-  handlePriceClick = () => {
-    console.log('点击价格选项，打开价格弹窗')
+  handlePriceConfirm = (minPrice: number, maxPrice: number) => {
     this.setState({
+      showPriceModal: false,
       showCityDatePanel: false,
-      showGuestPanel: false,
-      showPriceModal: true
+      searchParams: {
+        ...this.state.searchParams,
+        minPrice,
+        maxPrice
+      }
     })
   }
 
-  handlePriceConfirm = () => {
-    console.log('确认价格，关闭价格弹窗')
-    this.setState({ showPriceModal: false })
-  }
-
   handlePriceCancel = () => {
-    console.log('取消价格选择，关闭价格弹窗')
     this.setState({ showPriceModal: false })
   }
 
   handleHotelClick = (hotelId: string) => {
     const { searchParams } = this.state
     Taro.navigateTo({
-      url: `/pages/hotel/detail?id=${hotelId}&checkIn=${searchParams.checkIn}&checkOut=${searchParams.checkOut}`
+      url: `/pages/hotel/detail?id=${hotelId}&checkIn=${searchParams.checkIn}&checkOut=${searchParams.checkOut}&rooms=${searchParams.rooms}&adults=${searchParams.adults}&children=${searchParams.children}`
     })
     setTimeout(() => {
       Taro.hideLoading()
@@ -633,7 +791,7 @@ export default class HotelList extends Component<{}, HotelListState> {
   }
 
   render() {
-    const { hotels, searchParams, showCityDatePanel, showGuestPanel, showCalendar, loadingMore, hasMore, pendingOrder, remainingTime, bookmarkPosition, showPriceModal, showStarModal } = this.state
+    const { hotels, searchParams, showCityDatePanel, showGuestPanel, showCalendar, loadingMore, hasMore, pendingOrder, remainingTime, bookmarkPosition, showPriceModal, showStarModal, showCityModal, locating } = this.state
 
     return (
       <View className='hotel-list-page'>
@@ -655,28 +813,33 @@ export default class HotelList extends Component<{}, HotelListState> {
               </View>
             </View>
             <View className='search-hotel-name'>
-              <Input
-                className='hotel-name-input'
-                placeholder='酒店名称'
-                value={searchParams.hotelName}
-                onInput={this.handleHotelNameChange}
-              />
+              <View className='hotel-name-wrapper'>
+                {!searchParams.hotelName && !this.state.isHotelNameFocused && (
+                  <Text className='hotel-name-placeholder'>酒店名称</Text>
+                )}
+                <Input
+                  className='hotel-name-input'
+                  value={searchParams.hotelName}
+                  onInput={this.handleHotelNameChange}
+                  onFocus={this.handleHotelNameFocus}
+                  onBlur={this.handleHotelNameBlur}
+                />
+              </View>
             </View>
           </View>
 
           {showCityDatePanel && (
-            <View className='city-date-mask' onClick={this.handleCityDateMaskClick}>
+            <View className='city-date-mask' onClick={() => this.setState({ showCityDatePanel: false })}>
               <View className='city-date-panel' onClick={(e) => e.stopPropagation()}>
                 <ScrollView className='panel-scroll' scrollY>
                   <View className='panel-content'>
                     <View className='panel-row'>
                       <Text className='panel-label'>城市</Text>
-                      <Picker mode='selector' range={['不限', '北京', '上海', '广州', '深圳', '杭州', '成都']} onChange={this.handleCitySelect}>
-                        <View className='panel-picker'>
-                          <Text>{searchParams.city || '不限'}</Text>
-                          <Text className='picker-arrow'>▼</Text>
-                        </View>
-                      </Picker>
+                      <View className='location-icon' onClick={locating ? null : this.handleCityClick}>🌏</View>
+                      <View className='panel-picker' onClick={locating ? null : this.handleCityPickerClick}>
+                        <Text>{locating ? '定位中...' : (searchParams.city || '不限')}</Text>
+                        <Text className='picker-arrow'>▼</Text>
+                      </View>
                     </View>
                     <View className='panel-row' onClick={this.handleCheckInClick}>
                       <Text className='panel-label'>入住日期</Text>
@@ -695,14 +858,14 @@ export default class HotelList extends Component<{}, HotelListState> {
                     <View className='panel-row' style={{flexWrap: 'wrap'}}>
                       <View className='panel-half-row' style={{width: '48%', marginRight: '4%'}}>
                         <Text className='panel-label'>价格</Text>
-                        <View className='panel-picker'>
+                        <View className='panel-picker' onClick={() => this.setState({ showPriceModal: true })}>
                           <Text>¥{searchParams.minPrice} - {searchParams.maxPrice >= 2000 ? '2000以上' : searchParams.maxPrice}</Text>
                           <Text className='picker-arrow'>▼</Text>
                         </View>
                       </View>
                       <View className='panel-half-row' style={{width: '48%'}}>
                         <Text className='panel-label'>星级</Text>
-                        <View className='panel-picker' onClick={this.handleStarClick}>
+                        <View className='panel-picker' onClick={() => this.setState({ showStarModal: true })}>
                           <Text>{searchParams.starLevel > 0 ? searchParams.starLevel + '星' : '不限'}</Text>
                           <Text className='picker-arrow'>▼</Text>
                         </View>
@@ -765,6 +928,28 @@ export default class HotelList extends Component<{}, HotelListState> {
             </View>
           </View>
         )}
+
+        <CitySelector
+          visible={showCityModal}
+          selectedCity={searchParams.city}
+          onConfirm={this.handleCitySelect}
+          onClose={this.handleCityCancel}
+        />
+
+        <PriceSelector
+          visible={showPriceModal}
+          minPrice={searchParams.minPrice}
+          maxPrice={searchParams.maxPrice}
+          onConfirm={this.handlePriceConfirm}
+          onClose={this.handlePriceCancel}
+        />
+
+        <StarSelector
+          visible={showStarModal}
+          starLevel={searchParams.starLevel}
+          onConfirm={this.handleStarConfirm}
+          onClose={this.handleStarCancel}
+        />
 
         {pendingOrder && remainingTime > 0 && (
           <View
@@ -856,76 +1041,6 @@ export default class HotelList extends Component<{}, HotelListState> {
           onConfirm={this.handleCalendarConfirm}
           onClose={this.handleCalendarClose}
         />
-
-        {showPriceModal && (
-          <View className='modal-mask' onClick={this.handlePriceCancel}>
-            <View className='modal-content' onClick={(e) => e.stopPropagation()}>
-              <View className='modal-header'>
-                <Text className='modal-title'>选择价格区间</Text>
-                <View className='modal-close' onClick={this.handlePriceCancel}>✕</View>
-              </View>
-              <View className='modal-body'>
-                <View className='price-input-row'>
-                  <View className='price-input-item'>
-                    <Text className='price-label'>最低价格</Text>
-                    <Input
-                      className='price-input'
-                      type='number'
-                      value={searchParams.minPrice.toString()}
-                      onChange={this.handleMinPriceChange}
-                      placeholder='0'
-                    />
-                  </View>
-                  <View className='price-input-item'>
-                    <Text className='price-label'>最高价格</Text>
-                    <Input
-                      className='price-input'
-                      type='number'
-                      value={searchParams.maxPrice.toString()}
-                      onChange={this.handleMaxPriceChange}
-                      placeholder='2000'
-                    />
-                  </View>
-                </View>
-              </View>
-              <View className='modal-footer'>
-                <Button className='modal-btn cancel-btn' onClick={this.handlePriceCancel}>取消</Button>
-                <Button className='modal-btn confirm-btn' onClick={this.handlePriceConfirm}>确定</Button>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {showStarModal && (
-          <View className='modal-mask' onClick={this.handleStarCancel}>
-            <View className='modal-content' onClick={(e) => e.stopPropagation()}>
-              <View className='modal-header'>
-                <Text className='modal-title'>选择星级</Text>
-                <View className='modal-close' onClick={this.handleStarCancel}>✕</View>
-              </View>
-              <View className='modal-body'>
-                <View className='star-rating-container'>
-                  <Text className='star-rating-title'>请选择酒店星级</Text>
-                  <View className='star-rating'>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Text
-                        key={star}
-                        className={`star ${searchParams.starLevel >= star ? 'active' : ''}`}
-                        onClick={() => this.handleStarSelect(star)}
-                      >
-                        ⭐
-                      </Text>
-                    ))}
-                  </View>
-                </View>
-              </View>
-              <View className='modal-footer'>
-                <Button className='modal-btn cancel-btn' onClick={this.handleStarCancel}>取消</Button>
-                <Button className='modal-btn confirm-btn' onClick={this.handleStarConfirm}>确定</Button>
-              </View>
-            </View>
-          </View>
-        )}
 
       </View>
     )
