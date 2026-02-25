@@ -1,4 +1,5 @@
-import { Card, Row, Col, Statistic, List, Tag, Space, Badge } from 'antd'
+import { useState, useEffect } from 'react'
+import { Card, Row, Col, Statistic, List, Tag, Space, Badge, Spin } from 'antd'
 import {
   ApartmentOutlined,
   FileTextOutlined,
@@ -7,14 +8,210 @@ import {
   CloseCircleOutlined,
   ArrowRightOutlined
 } from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
+
+const API_BASE = '/api'
 
 function Overview() {
-  const pendingSubmissions = [
-    { id: 1, hotel: '杭州君悦酒店', type: '酒店信息', time: '2小时前', status: '审核中' },
-    { id: 2, hotel: '北京瑞吉酒店', type: '房型管理', time: '5小时前', status: '审核中' },
-    { id: 3, hotel: '上海浦东香格里拉', type: '房态房价', time: '1天前', status: '已驳回' },
-    { id: 4, hotel: '广州白云宾馆', type: '提交记录', time: '2天前', status: '审核中' },
-  ]
+  const navigate = useNavigate()
+  const [todayOrderCount, setTodayOrderCount] = useState(0)
+  const [totalNights, setTotalNights] = useState(0)
+  const [todayGMV, setTodayGMV] = useState(0)
+  const [last7DaysOrderCount, setLast7DaysOrderCount] = useState(0)
+  const [last7DaysNights, setLast7DaysNights] = useState(0)
+  const [pendingOrders, setPendingOrders] = useState([])
+  const [rejectedSubmissions, setRejectedSubmissions] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  const getToken = () => {
+    return localStorage.getItem('token')
+  }
+
+  const getCurrentUserId = () => {
+    const user = localStorage.getItem('user')
+    if (user) {
+      try {
+        const parsed = JSON.parse(user)
+        return parsed.id
+      } catch (error) {
+        console.error('Error parsing user:', error)
+      }
+    }
+    return null
+  }
+
+  const fetchTodayOrderCount = async () => {
+    setLoading(true)
+    try {
+      const token = getToken()
+      const currentUserId = getCurrentUserId()
+      const response = await fetch(`${API_BASE}/booking-order/merchant/${currentUserId}/today-count`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        console.log('Today order count:', result)
+        setTodayOrderCount(result.data?.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching today order count:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchTotalNights = async () => {
+    setLoading(true)
+    try {
+      const token = getToken()
+      const currentUserId = getCurrentUserId()
+      const response = await fetch(`${API_BASE}/booking-order/merchant/${currentUserId}/total-nights`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        console.log('Total nights:', result)
+        setTotalNights(result.data?.totalNights || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching total nights:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchTodayGMV = async () => {
+    setLoading(true)
+    try {
+      const token = getToken()
+      const currentUserId = getCurrentUserId()
+      const response = await fetch(`${API_BASE}/booking-order/merchant/${currentUserId}/today-gmv`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        console.log('Today GMV:', result)
+        setTodayGMV(result.data?.totalGMV || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching today GMV:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchLast7DaysOrderCount = async () => {
+    setLoading(true)
+    try {
+      const token = getToken()
+      const currentUserId = getCurrentUserId()
+      const response = await fetch(`${API_BASE}/booking-order/merchant/${currentUserId}/last7days-count`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        setLast7DaysOrderCount(result.data?.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching last 7 days order count:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchLast7DaysNights = async () => {
+    setLoading(true)
+    try {
+      const token = getToken()
+      const currentUserId = getCurrentUserId()
+      const response = await fetch(`${API_BASE}/booking-order/merchant/${currentUserId}/last7days-nights`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        setLast7DaysNights(result.data?.totalNights || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching last 7 days nights:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchPendingOrders = async () => {
+    setLoading(true)
+    try {
+      const token = getToken()
+      const currentUserId = getCurrentUserId()
+      const response = await fetch(`${API_BASE}/booking-order/merchant/${currentUserId}/pending-orders`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        setPendingOrders(result.data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching pending orders:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchRejectedSubmissions = async () => {
+    setLoading(true)
+    try {
+      const token = getToken()
+      const currentUserId = getCurrentUserId()
+      console.log('Fetching rejected submissions for merchant:', currentUserId)
+      const response = await fetch(`${API_BASE}/hotel-submission/merchant/${currentUserId}/rejected`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      console.log('Response status:', response.status)
+      if (response.ok) {
+        const result = await response.json()
+        console.log('Rejected submissions:', result.data)
+        setRejectedSubmissions(result.data || [])
+      } else {
+        const errorText = await response.text()
+        console.error('Failed to fetch rejected submissions:', response.status, errorText)
+      }
+    } catch (error) {
+      console.error('Error fetching rejected submissions:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchTodayOrderCount()
+    fetchTotalNights()
+    fetchTodayGMV()
+    fetchLast7DaysOrderCount()
+    fetchLast7DaysNights()
+    fetchPendingOrders()
+    fetchRejectedSubmissions()
+  }, [])
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -24,10 +221,89 @@ function Overview() {
         return 'error'
       case '已通过':
         return 'success'
+      case 'PAID':
+        return 'warning'
+      case 'CONFIRMED':
+        return 'processing'
+      case 'CANCELLED':
+        return 'default'
+      case 'COMPLETED':
+        return 'success'
       default:
         return 'default'
     }
   }
+
+  const formatOrderTime = (date) => {
+    if (!date) return '-'
+    const now = new Date()
+    const orderDate = new Date(date)
+    const diffMs = now - orderDate
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 1) return '刚刚'
+    if (diffMins < 60) return `${diffMins}分钟前`
+    if (diffHours < 24) return `${diffHours}小时前`
+    if (diffDays < 7) return `${diffDays}天前`
+    return orderDate.toLocaleDateString('zh-CN')
+  }
+
+  const handleViewOrder = (orderId) => {
+    navigate('/merchant/orders?status=PAID')
+  }
+
+  const handleViewSubmission = (submissionId) => {
+    navigate('/merchant/submission')
+  }
+
+  const getHotelName = (item) => {
+    if (item.hotel?.nameZh) {
+      return item.hotel.nameZh
+    }
+    if (item.roomtype?.hotel?.nameZh) {
+      return item.roomtype.hotel.nameZh
+    }
+    return '未知酒店'
+  }
+
+  const getSubmissionType = (item) => {
+    if (item.hotelId && !item.roomtypeId) {
+      return '酒店信息'
+    }
+    if (item.roomtypeId && !item.hotelId) {
+      return '房型管理'
+    }
+    return '提交记录'
+  }
+
+  const combinedItems = [
+    ...pendingOrders.map(item => ({
+      ...item,
+      type: 'order',
+      tag: '酒店预订',
+      tagColor: 'blue',
+      hotelName: item.hotel?.nameZh || '未知酒店',
+      time: item.createdTime,
+    })),
+    ...rejectedSubmissions.map(item => ({
+      ...item,
+      type: 'submission',
+      tag: '审核驳回',
+      tagColor: 'red',
+      hotelName: getHotelName(item),
+      time: item.updatedTime,
+    })),
+  ].sort((a, b) => {
+    const timeA = new Date(a.time).getTime()
+    const timeB = new Date(b.time).getTime()
+    return timeB - timeA
+  }).slice(0, 6)
+
+  console.log('Combined items:', combinedItems)
+  console.log('Pending orders:', pendingOrders)
+  console.log('Rejected submissions:', rejectedSubmissions)
 
   return (
     <div>
@@ -38,25 +314,28 @@ function Overview() {
               <Col span={6}>
                 <Statistic
                   title="订单数"
-                  value={128}
+                  value={todayOrderCount}
                   prefix={<ApartmentOutlined />}
                   valueStyle={{ color: '#3f8600' }}
+                  loading={loading}
                 />
               </Col>
               <Col span={6}>
                 <Statistic
                   title="间夜数"
-                  value={256}
+                  value={totalNights}
                   valueStyle={{ color: '#cf1322' }}
+                  loading={loading}
                 />
               </Col>
               <Col span={6}>
                 <Statistic
                   title="GMV"
-                  value={45678}
+                  value={todayGMV}
                   prefix="¥"
                   precision={2}
                   valueStyle={{ color: '#1890ff' }}
+                  loading={loading}
                 />
               </Col>
               <Col span={6}>
@@ -77,16 +356,18 @@ function Overview() {
               <Col span={12}>
                 <Statistic
                   title="总订单"
-                  value={892}
+                  value={last7DaysOrderCount}
                   prefix={<FileTextOutlined />}
                   valueStyle={{ color: '#3f8600' }}
+                  loading={loading}
                 />
               </Col>
               <Col span={12}>
                 <Statistic
                   title="总间夜"
-                  value={1784}
+                  value={last7DaysNights}
                   valueStyle={{ color: '#cf1322' }}
+                  loading={loading}
                 />
               </Col>
             </Row>
@@ -96,11 +377,11 @@ function Overview() {
         <Col span={12}>
           <Card title="待办事项" bordered={false} style={{ height: '100%' }}>
             <List
-              dataSource={pendingSubmissions}
+              dataSource={combinedItems}
               renderItem={(item) => (
                 <List.Item
                   actions={[
-                    <a key="view" style={{ fontSize: '14px' }}>
+                    <a key="view" style={{ fontSize: '14px' }} onClick={() => item.type === 'order' ? handleViewOrder(item.id) : handleViewSubmission(item.id)}>
                       查看 <ArrowRightOutlined />
                     </a>
                   ]}
@@ -109,14 +390,14 @@ function Overview() {
                     avatar={<Badge status={getStatusColor(item.status)} />}
                     title={
                       <Space>
-                        <span>{item.hotel}</span>
-                        <Tag color={getStatusColor(item.status)}>{item.type}</Tag>
+                        <span>{item.hotelName}</span>
+                        <Tag color={item.tagColor}>{item.tag}</Tag>
                       </Space>
                     }
                     description={
                       <Space>
                         <ClockCircleOutlined style={{ fontSize: '12px', color: '#999' }} />
-                        <span style={{ fontSize: '14px', color: '#666' }}>{item.time}</span>
+                        <span style={{ fontSize: '14px', color: '#666' }}>{formatOrderTime(item.time)}</span>
                       </Space>
                     }
                   />
@@ -133,6 +414,7 @@ function Overview() {
                 hoverable
                 style={{ cursor: 'pointer', textAlign: 'center' }}
                 bodyStyle={{ padding: '24px' }}
+                onClick={() => navigate('/merchant/hotel-manage')}
               >
                 <ApartmentOutlined style={{ fontSize: '32px', color: '#1890ff', marginBottom: '16px' }} />
                 <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
@@ -147,6 +429,7 @@ function Overview() {
                 hoverable
                 style={{ cursor: 'pointer', textAlign: 'center' }}
                 bodyStyle={{ padding: '24px' }}
+                onClick={() => navigate('/merchant/room-price')}
               >
                 <ClockCircleOutlined style={{ fontSize: '32px', color: '#52c41a', marginBottom: '16px' }} />
                 <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
@@ -161,6 +444,7 @@ function Overview() {
                 hoverable
                 style={{ cursor: 'pointer', textAlign: 'center' }}
                 bodyStyle={{ padding: '24px' }}
+                onClick={() => navigate('/merchant/submission')}
               >
                 <CheckCircleOutlined style={{ fontSize: '32px', color: '#52c41a', marginBottom: '16px' }} />
                 <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>

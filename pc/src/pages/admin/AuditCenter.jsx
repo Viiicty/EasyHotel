@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, Row, Col, Statistic, List, Tag, Space, Badge, Button } from 'antd'
 import {
   AuditOutlined,
@@ -9,22 +10,147 @@ import {
   ApartmentOutlined
 } from '@ant-design/icons'
 
-function AuditCenter() {
-  const [pendingAudits, setPendingAudits] = useState([
-    { id: 1, hotel: '杭州君悦酒店', type: '酒店信息', submitter: '张三', time: '2小时前', status: '审核中' },
-    { id: 2, hotel: '北京瑞吉酒店', type: '房型管理', submitter: '李四', time: '5小时前', status: '审核中' },
-    { id: 3, hotel: '上海浦东香格里拉', type: '房态房价', submitter: '王五', time: '1天前', status: '审核中' },
-    { id: 4, hotel: '广州白云宾馆', type: '提交记录', submitter: '赵六', time: '2天前', status: '审核中' },
-  ])
+const API_BASE = '/api'
 
-  const [recentAudits, setRecentAudits] = useState([
-    { id: 1, hotel: '深圳华侨城洲际酒店', type: '酒店信息', submitter: '钱七', time: '3小时前', status: '已通过', auditor: '管理员' },
-    { id: 2, hotel: '南京金陵饭店', type: '房型管理', submitter: '孙八', time: '6小时前', status: '已驳回', auditor: '管理员', reason: '价格设置过低' },
-    { id: 3, hotel: '成都博舍', type: '房态房价', submitter: '周九', time: '1天前', status: '已通过', auditor: '管理员' },
-  ])
+function AuditCenter() {
+  const navigate = useNavigate()
+  const [pendingCount, setPendingCount] = useState(0)
+  const [todayAuditedCount, setTodayAuditedCount] = useState(0)
+  const [todayApprovedCount, setTodayApprovedCount] = useState(0)
+  const [todayRejectedCount, setTodayRejectedCount] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [pendingAudits, setPendingAudits] = useState([])
+  const [recentAudits, setRecentAudits] = useState([])
+
+  const getToken = () => {
+    return localStorage.getItem('token')
+  }
+
+  const fetchPendingCount = async () => {
+    try {
+      const token = getToken()
+      const response = await fetch(`${API_BASE}/hotel-submission/stats/pending`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        const result = await response.json()
+        setPendingCount(result.data?.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching pending count:', error)
+    }
+  }
+
+  const fetchTodayAuditedCount = async () => {
+    try {
+      const token = getToken()
+      const response = await fetch(`${API_BASE}/hotel-submission/stats/today-audited`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        const result = await response.json()
+        setTodayAuditedCount(result.data?.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching today audited count:', error)
+    }
+  }
+
+  const fetchTodayApprovedCount = async () => {
+    try {
+      const token = getToken()
+      const response = await fetch(`${API_BASE}/hotel-submission/stats/today-approved`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        const result = await response.json()
+        setTodayApprovedCount(result.data?.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching today approved count:', error)
+    }
+  }
+
+  const fetchTodayRejectedCount = async () => {
+    try {
+      const token = getToken()
+      const response = await fetch(`${API_BASE}/hotel-submission/stats/today-rejected`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        const result = await response.json()
+        setTodayRejectedCount(result.data?.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching today rejected count:', error)
+    }
+  }
+
+  const fetchPendingAudits = async () => {
+    try {
+      const token = getToken()
+      const response = await fetch(`${API_BASE}/hotel-submission/pending-all`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        const result = await response.json()
+        const data = result.data || []
+        setPendingAudits(Array.isArray(data) ? data : [])
+      } else {
+        console.error('fetchPendingAudits 响应错误:', response.status)
+      }
+    } catch (error) {
+      console.error('Error fetching pending audits:', error)
+      setPendingAudits([])
+    }
+  }
+
+  const fetchRecentAudits = async () => {
+    try {
+      const token = getToken()
+      const response = await fetch(`${API_BASE}/hotel-submission/recent-audits?limit=3`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        const result = await response.json()
+        const data = result.data || []
+        setRecentAudits(Array.isArray(data) ? data : [])
+      }
+    } catch (error) {
+      console.error('Error fetching recent audits:', error)
+      setRecentAudits([])
+    }
+  }
+
+  useEffect(() => {
+    fetchPendingCount()
+    fetchTodayAuditedCount()
+    fetchTodayApprovedCount()
+    fetchTodayRejectedCount()
+    fetchPendingAudits()
+    fetchRecentAudits()
+  }, [])
 
   const getStatusColor = (status) => {
     switch (status) {
+      case 'PENDING':
+        return 'processing'
+      case 'REJECTED':
+        return 'error'
+      case 'APPROVED':
+        return 'success'
       case '审核中':
         return 'processing'
       case '已驳回':
@@ -33,6 +159,19 @@ function AuditCenter() {
         return 'success'
       default:
         return 'default'
+    }
+  }
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'PENDING':
+        return '审核中'
+      case 'REJECTED':
+        return '已驳回'
+      case 'APPROVED':
+        return '已通过'
+      default:
+        return status
     }
   }
 
@@ -50,7 +189,23 @@ function AuditCenter() {
   }
 
   const handleAudit = (item) => {
-    console.log('审核:', item)
+    navigate('/admin/hotel-audit', { state: { item } })
+  }
+
+  const handleQuickAction = (action) => {
+    switch (action) {
+      case 'hotel-audit':
+        navigate('/admin/hotel-audit')
+        break
+      case 'online-manage':
+        navigate('/admin/online-manage')
+        break
+      case 'banner-manage':
+        navigate('/admin/banner-manage')
+        break
+      default:
+        break
+    }
   }
 
   return (
@@ -62,31 +217,35 @@ function AuditCenter() {
               <Col span={6}>
                 <Statistic
                   title="待审核"
-                  value={pendingAudits.length}
+                  value={pendingCount}
                   prefix={<ClockCircleOutlined />}
                   valueStyle={{ color: '#faad14' }}
+                  loading={loading}
                 />
               </Col>
               <Col span={6}>
                 <Statistic
                   title="今日已审核"
-                  value={15}
+                  value={todayAuditedCount}
                   prefix={<CheckCircleOutlined />}
                   valueStyle={{ color: '#52c41a' }}
+                  loading={loading}
                 />
               </Col>
               <Col span={6}>
                 <Statistic
                   title="今日通过"
-                  value={12}
+                  value={todayApprovedCount}
                   valueStyle={{ color: '#3f8600' }}
+                  loading={loading}
                 />
               </Col>
               <Col span={6}>
                 <Statistic
                   title="今日驳回"
-                  value={3}
+                  value={todayRejectedCount}
                   valueStyle={{ color: '#cf1322' }}
+                  loading={loading}
                 />
               </Col>
             </Row>
@@ -97,8 +256,8 @@ function AuditCenter() {
           <Card
             title={
               <Space>
-                <Badge count={pendingAudits.length} offset={[10, 0]}>
-                  <span>待审核列表</span>
+                <Badge count={pendingAudits.length} offset={[10, 5]}>
+                  <span style={{ fontSize: '24px' }}>待审核列表</span>
                 </Badge>
               </Space>
             }
@@ -123,23 +282,23 @@ function AuditCenter() {
                     avatar={<Badge status={getStatusColor(item.status)} />}
                     title={
                       <Space>
-                        <span>{item.hotel}</span>
-                        <Tag color={getStatusColor(item.status)}>{item.type}</Tag>
+                        <span style={{ fontSize: '14px' }}>{item.hotelName || '未知酒店'}</span>
+                        <Tag color={getStatusColor(item.status)} style={{ fontSize: '13px' }}>
+                          {item.type === 'hotel' ? '酒店信息' : '房型信息'}
+                        </Tag>
                       </Space>
                     }
                     description={
                       <Space>
-                        <span style={{ fontSize: '14px', color: '#666' }}>
-                          提交人: {item.submitter}
-                        </span>
                         <span style={{ fontSize: '14px', color: '#999' }}>
-                          {item.time}
+                          提交时间: {item.createdTime ? new Date(item.createdTime).toLocaleString('zh-CN') : '-'}
                         </span>
                       </Space>
                     }
                   />
                 </List.Item>
               )}
+              locale={{ emptyText: '暂无待审核数据' }}
             />
           </Card>
         </Col>
@@ -154,30 +313,22 @@ function AuditCenter() {
                     avatar={<Badge status={getStatusColor(item.status)} />}
                     title={
                       <Space>
-                        <span>{item.hotel}</span>
-                        <Tag color={getStatusColor(item.status)}>{item.type}</Tag>
+                        <span style={{ fontSize: '14px' }}>{item.hotelName || '未知酒店'}</span>
+                        <Tag color={getStatusColor(item.status)} style={{ fontSize: '12px' }}>
+                          {item.type === 'hotel' ? '酒店信息' : '房型信息'}
+                        </Tag>
                       </Space>
                     }
                     description={
                       <div>
                         <Space style={{ marginBottom: '4px' }}>
-                          <span style={{ fontSize: '14px', color: '#666' }}>
-                            提交人: {item.submitter}
-                          </span>
                           <span style={{ fontSize: '14px', color: '#999' }}>
-                            {item.time}
+                            审核时间: {item.updatedTime ? new Date(item.updatedTime).toLocaleString('zh-CN') : '-'}
                           </span>
                         </Space>
-                        {item.status === '已驳回' && (
-                          <div style={{ fontSize: '14px', color: '#ff4d4f' }}>
-                            驳回原因: {item.reason}
-                          </div>
-                        )}
-                        {item.status === '已通过' && (
-                          <div style={{ fontSize: '14px', color: '#52c41a' }}>
-                            审核人: {item.auditor}
-                          </div>
-                        )}
+                        <div style={{ fontSize: '14px', color: item.status === 'APPROVED' ? '#52c41a' : '#ff4d4f' }}>
+                          {item.status === 'APPROVED' ? '已通过' : '已驳回'}
+                        </div>
                       </div>
                     }
                   />
@@ -195,6 +346,7 @@ function AuditCenter() {
                   hoverable
                   style={{ cursor: 'pointer', textAlign: 'center' }}
                   bodyStyle={{ padding: '24px' }}
+                  onClick={() => handleQuickAction('hotel-audit')}
                 >
                   <ApartmentOutlined style={{ fontSize: '32px', color: '#1890ff', marginBottom: '16px' }} />
                   <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
@@ -211,6 +363,7 @@ function AuditCenter() {
                   hoverable
                   style={{ cursor: 'pointer', textAlign: 'center' }}
                   bodyStyle={{ padding: '24px' }}
+                  onClick={() => handleQuickAction('online-manage')}
                 >
                   <FileTextOutlined style={{ fontSize: '32px', color: '#52c41a', marginBottom: '16px' }} />
                   <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
@@ -227,6 +380,7 @@ function AuditCenter() {
                   hoverable
                   style={{ cursor: 'pointer', textAlign: 'center' }}
                   bodyStyle={{ padding: '24px' }}
+                  onClick={() => handleQuickAction('banner-manage')}
                 >
                   <AuditOutlined style={{ fontSize: '32px', color: '#faad14', marginBottom: '16px' }} />
                   <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>

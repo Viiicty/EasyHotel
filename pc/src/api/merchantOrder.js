@@ -18,6 +18,7 @@ export const merchantOrderApi = {
     if (params.status) queryParams.append('status', params.status)
     if (params.page) queryParams.append('page', params.page)
     if (params.pageSize) queryParams.append('pageSize', params.pageSize)
+    if (params.keyword) queryParams.append('keyword', params.keyword)
 
     const url = `${API_BASE}/merchant/orders?${queryParams.toString()}`
     console.log('=== 请求URL ===', url)

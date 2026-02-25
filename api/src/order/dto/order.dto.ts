@@ -20,4 +20,5 @@ export class OrderQueryDto {
   status?: 'PENDING' | 'PAID' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED' | 'COMPLETED';
   page?: number;
   pageSize?: number;
+  keyword?: string;
 }

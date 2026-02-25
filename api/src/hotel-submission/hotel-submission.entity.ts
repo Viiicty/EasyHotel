@@ -42,7 +42,4 @@ export class HotelSubmissionEntity extends BaseEntity {
 
   @Column({ type: 'varchar', nullable: true, name: 'reviewed_by', comment: '审核人ID' })
   reviewedBy?: string;
-
-  @Column({ type: 'timestamp', nullable: true, name: 'reviewedAt', comment: '审核时间' })
-  reviewedAt?: Date;
 }

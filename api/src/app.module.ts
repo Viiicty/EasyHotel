@@ -17,6 +17,7 @@ import { QueueModule } from './queue/queue.module';
 import { RoomtypePictureModule } from './roomtype-picture/roomtype-picture.module';
 import { HotelCoverModule } from './hotel-cover/hotel-cover.module';
 import { HomeBannerModule } from './home-banner/home-banner.module';
+import { BookingOrderModule } from './booking-order/booking-order.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { HomeBannerModule } from './home-banner/home-banner.module';
     RoomtypePictureModule,
     HotelCoverModule,
     HomeBannerModule,
+    BookingOrderModule,
   ],
   providers: [
     {

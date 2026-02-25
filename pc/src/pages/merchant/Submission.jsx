@@ -349,9 +349,12 @@ function Submission() {
           hotelMap[hotel.id] = hotel.nameZh || hotel.name || '未知酒店'
         })
         setHotels(hotelMap)
+        return hotelMap
       }
+      return {}
     } catch (error) {
       console.error('Error fetching hotels:', error)
+      return {}
     }
   }
 
@@ -419,7 +422,7 @@ function Submission() {
   const fetchRoomTypes = async () => {
     setLoading(true)
     try {
-      await fetchHotelsMap()
+      const hotelMap = await fetchHotelsMap()
       
       const token = getToken()
       const currentUserId = getCurrentUserId()
@@ -437,24 +440,24 @@ function Submission() {
       const formattedData = (result.data || [])
         .filter(item => item.createdBy === currentUserId)
         .map(item => ({
-        key: item.id,
-        id: item.id,
-        hotelId: item.hotelId,
-        hotelName: hotels[item.hotelId] || '未知酒店',
-        roomTypeName: item.name || '未知房型',
-        bedType: item.bedType || '-',
-        breakfast: item.breakfast || '-',
-        areaSqm: item.areaSqm || '-',
-        maxGuests: item.maxGuests || '-',
-        type: '房型管理',
-        submitTime: item.createdTime ? new Date(item.createdTime).toLocaleString('zh-CN') : '-',
-        submitterId: item.createdBy,
-        submitter: item.createdBy || '-',
-        status: item.status === 'DRAFT' ? '草稿' : item.status === 'PENDING' ? '审核中' : item.status === 'APPROVED' ? '已通过' : item.status === 'REJECTED' ? '已驳回' : item.status,
-        auditorId: item.updatedBy,
-        auditor: item.updatedBy || '-',
-        rejectReason: item.rejectReason || '-',
-      }))
+          key: item.id,
+          id: item.id,
+          hotelId: item.hotelId,
+          hotelName: hotelMap[item.hotelId] || '未知酒店',
+          roomTypeName: item.name || '未知房型',
+          bedType: item.bedType || '-',
+          breakfast: item.breakfast || '-',
+          areaSqm: item.areaSqm || '-',
+          maxGuests: item.maxGuests || '-',
+          type: '房型管理',
+          submitTime: item.createdTime ? new Date(item.createdTime).toLocaleString('zh-CN') : '-',
+          submitterId: item.createdBy,
+          submitter: item.createdBy || '-',
+          status: item.status === 'DRAFT' ? '草稿' : item.status === 'PENDING' ? '审核中' : item.status === 'APPROVED' ? '已通过' : item.status === 'REJECTED' ? '已驳回' : item.status,
+          auditorId: item.updatedBy,
+          auditor: item.updatedBy || '-',
+          rejectReason: item.rejectReason || '-',
+        }))
       
       setDataSource(formattedData)
       

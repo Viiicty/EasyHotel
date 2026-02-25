@@ -7,7 +7,6 @@ import {
   CalendarOutlined,
   DollarOutlined,
   TeamOutlined,
-  MessageOutlined,
   SettingOutlined,
   FileTextOutlined,
   AuditOutlined,
@@ -65,10 +64,6 @@ function SideNav({ collapsed, onCollapse }) {
         {
           key: '/merchant/account',
           label: '账号与权限',
-        },
-        {
-          key: '/merchant/message',
-          label: '消息中心',
         },
       ],
     },

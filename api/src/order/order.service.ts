@@ -362,7 +362,7 @@ export class OrderService {
     console.log('merchantId:', merchantId);
     console.log('query:', query);
     
-    const { status, page = 1, pageSize = 10 } = query;
+    const { status, page = 1, pageSize = 10, keyword } = query;
 
     console.log('准备查询酒店...');
     const hotelRepo = this.dataSource.getRepository(HotelEntity);
@@ -405,6 +405,13 @@ export class OrderService {
 
     if (status) {
       queryBuilder.andWhere('order.status = :status', { status });
+    }
+
+    if (keyword) {
+      queryBuilder.andWhere(
+        '(order.orderNo LIKE :keyword OR hotel.nameZh LIKE :keyword OR order.guestName LIKE :keyword)',
+        { keyword: `%${keyword}%` }
+      );
     }
 
     console.log('执行查询...');

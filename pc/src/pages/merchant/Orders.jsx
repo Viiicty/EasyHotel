@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Table, Button, Space, Tag, Modal, Descriptions, message, DatePicker, Select, Input, Tabs } from 'antd'
+import { Card, Table, Button, Space, Tag, Modal, Descriptions, message, Input, Tabs } from 'antd'
 import {
   EyeOutlined,
   SearchOutlined,
@@ -27,7 +27,7 @@ const STATUS_COLOR_MAP = {
 }
 
 function Orders() {
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = useState('PAID')
   const [loading, setLoading] = useState(false)
   const [dataSource, setDataSource] = useState([])
   const [pagination, setPagination] = useState({
@@ -38,14 +38,12 @@ function Orders() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [filters, setFilters] = useState({
-    status: '',
-    dateRange: null,
     keyword: '',
   })
 
   useEffect(() => {
     loadOrders()
-  }, [activeTab, pagination.current, pagination.pageSize])
+  }, [activeTab, pagination.current, pagination.pageSize, filters.keyword])
 
   const loadOrders = async () => {
     try {
@@ -58,9 +56,9 @@ function Orders() {
       if (activeTab !== 'all') {
         params.status = activeTab
       }
-      
-      if (filters.status) {
-        params.status = filters.status
+
+      if (filters.keyword) {
+        params.keyword = filters.keyword
       }
 
       const result = await merchantOrderApi.getOrders(params)
@@ -242,6 +240,17 @@ function Orders() {
     })
   }
 
+  const handleSearch = () => {
+    setPagination({ ...pagination, current: 1 })
+    loadOrders()
+  }
+
+  const handleClearSearch = () => {
+    setFilters({ ...filters, keyword: '' })
+    setPagination({ ...pagination, current: 1 })
+    loadOrders()
+  }
+
   const handleExport = () => {
     message.info('导出功能开发中')
   }
@@ -263,28 +272,15 @@ function Orders() {
               placeholder="搜索订单号/酒店/客人"
               style={{ width: 250 }}
               prefix={<SearchOutlined />}
+              value={filters.keyword}
               onChange={(e) => setFilters({ ...filters, keyword: e.target.value })}
               onPressEnter={loadOrders}
-            />
-            <Select
-              placeholder="订单状态"
-              style={{ width: 150 }}
               allowClear
-              onChange={(value) => {
-                setFilters({ ...filters, status: value })
-                setPagination({ ...pagination, current: 1 })
-              }}
-            >
-              <Select.Option value="PENDING">待支付</Select.Option>
-              <Select.Option value="PAID">待确认</Select.Option>
-              <Select.Option value="CONFIRMED">已确认</Select.Option>
-              <Select.Option value="CANCELLED">已取消</Select.Option>
-              <Select.Option value="COMPLETED">已完成</Select.Option>
-            </Select>
-            <DatePicker.RangePicker
-              placeholder={['入住日期', '离店日期']}
-              onChange={(dates) => setFilters({ ...filters, dateRange: dates })}
+              onClear={handleClearSearch}
             />
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+              搜索
+            </Button>
             <Button icon={<DownloadOutlined />} onClick={handleExport}>
               导出
             </Button>
@@ -295,6 +291,7 @@ function Orders() {
 
           <Tabs activeKey={activeTab} onChange={(key) => {
             setActiveTab(key)
+            setFilters({ ...filters, keyword: '' })
             setPagination({ ...pagination, current: 1 })
           }}>
             <Tabs.TabPane tab="全部订单" key="all" />

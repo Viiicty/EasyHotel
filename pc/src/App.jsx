@@ -16,7 +16,6 @@ import Submission from './pages/merchant/Submission'
 import Orders from './pages/merchant/Orders'
 import Marketing from './pages/merchant/Marketing'
 import Account from './pages/merchant/Account'
-import MessageCenter from './pages/merchant/MessageCenter'
 import AuditCenter from './pages/admin/AuditCenter'
 import HotelAudit from './pages/admin/HotelAudit'
 import OnlineManage from './pages/admin/OnlineManage'
@@ -52,7 +51,6 @@ function App() {
               <Route path="orders" element={<Orders />} />
               <Route path="marketing" element={<Marketing />} />
               <Route path="account" element={<Account />} />
-              <Route path="message" element={<MessageCenter />} />
             </Route>
 
             <Route

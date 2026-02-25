@@ -638,13 +638,19 @@ export class HotelService {
 
         const { RoomTypePriceDailyEntity } = await import('../room-type-price-daily/room-type-price-daily.entity');
 
-        dailyPrices = await priceRepository
+        const priceQuery = priceRepository
           .createQueryBuilder('p')
           .select(['p.roomTypeId', 'p.date', 'p.price'])
-          .where('p.date >= :checkIn', { checkIn: params.checkIn })
-          .andWhere('p.date < :checkOut', { checkOut: params.checkOut })
           .andWhere('p.roomTypeId IN (:...roomTypeIds)', { roomTypeIds: roomTypes.map(rt => rt.id) })
-          .getMany();
+
+        if (nights === 0) {
+          priceQuery.andWhere('p.date = :checkIn', { checkIn: params.checkIn })
+        } else {
+          priceQuery.andWhere('p.date >= :checkIn', { checkIn: params.checkIn })
+          priceQuery.andWhere('p.date < :checkOut', { checkOut: params.checkOut })
+        }
+
+        dailyPrices = await priceQuery.getMany()
 
         console.log('Daily prices:', dailyPrices);
       }
@@ -683,8 +689,13 @@ export class HotelService {
 
       console.log('房型价格:', prices)
       const minTotalPrice = prices.length > 0 ? Math.min(...prices) : undefined
-      const minPrice = minTotalPrice !== undefined ? Math.round(minTotalPrice / nights) : undefined
-      console.log('最低总价:', minTotalPrice, '最低均价:', minPrice)
+      
+      let minPrice: number | undefined
+      if (minTotalPrice !== undefined) {
+        const divisor = nights === 0 ? 1 : nights
+        minPrice = Math.round(minTotalPrice / divisor)
+      }
+      console.log('最低总价:', minTotalPrice, '最低均价:', minPrice, '入住天数:', nights)
 
       return {
         id: hotel.id,
