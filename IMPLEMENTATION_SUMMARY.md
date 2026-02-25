@@ -193,6 +193,8 @@ EasyHotel 是一个基于 NestJS 和 Taro 的易宿酒店预订系统，包含�
 #### 核心文件
 - `min/src/pages/hotel/detail.tsx` - 酒店详情组件
 - `min/src/pages/hotel/index.scss` - 酒店详情样式
+- `min/src/components/image-preview/image-preview.tsx` - 图片预览组件
+- `min/src/components/image-preview/image-preview.scss` - 图片预览样式
 
 #### 功能说明
 - 展示酒店详细信息（图片、名称、星级、地址、设施）
@@ -201,6 +203,15 @@ EasyHotel 是一个基于 NestJS 和 Taro 的易宿酒店预订系统，包含�
 - 点击"预订"跳转到预订页
 - 设施图标展示（WiFi、停车场、泳池、健身房等）
 - 日期继承自列表页
+- **图片预览功能**：
+  - 点击酒店顶部轮播图可查看大图
+  - 点击房型图片可查看大图
+  - 支持左右滑动查看多张图片
+  - 显示图片计数器（如"3/5"）
+  - 点击关闭按钮或图片可关闭预览
+  - 图片数量徽章提示（如"5张"）
+  - 独立的图片预览组件，可复用
+  - 关闭预览后页面可正常滚动
 
 ---
 
@@ -506,7 +517,56 @@ interface StarSelectorProps {
 
 ---
 
-### 11.4 组件复用策略
+### 11.4 图片预览组件
+
+#### 核心文件
+- `min/src/components/image-preview/image-preview.tsx` - 图片预览组件
+- `min/src/components/image-preview/image-preview.scss` - 图片预览样式
+
+#### 功能说明
+- **组件类型**：全屏图片预览
+- **图片展示**：使用 Swiper 组件实现左右滑动
+- **图片计数**：底部显示当前图片位置（如"3/5"）
+- **关闭方式**：
+  - 点击右上角关闭按钮
+  - 点击图片本身
+  - 点击背景区域
+- **事件处理**：
+  - 使用 `catchMove` 属性禁用背景滚动
+  - 只允许图片区域左右滑动
+  - 关闭后页面可正常滚动
+
+#### Props 接口
+```typescript
+interface ImagePreviewProps {
+  visible: boolean           // 组件显示状态
+  images: string[]         // 图片URL数组
+  currentIndex: number      // 当前图片索引
+  onClose: () => void      // 关闭回调
+  onChange?: (index: number) => void  // 图片切换回调
+}
+```
+
+#### 使用示例
+```tsx
+<ImagePreview
+  visible={showImagePreview}
+  images={previewImages}
+  currentIndex={currentPreviewIndex}
+  onClose={handleClosePreview}
+  onChange={handlePreviewChange}
+/>
+```
+
+#### 使用场景
+- **酒店详情页**：
+  - 点击顶部轮播图查看酒店图片
+  - 点击房型图片查看房型图片
+  - 显示图片数量徽章（如"5张"）
+
+---
+
+### 11.5 组件复用策略
 
 #### 复用场景
 - **首页**：使用城市、价格、星级选择器
@@ -815,7 +875,7 @@ export class OrderExpiryProcessor {
 ✅ GitHub 上传准备
 ✅ 小程序首页（轮播图、推荐酒店、搜索、定位）
 ✅ 酒店列表页（下拉抽屉筛选、组件复用）
-✅ 酒店详情页
+✅ 酒店详情页（图片预览功能）
 ✅ 预订功能
 ✅ 订单管理
 ✅ 用户认证
@@ -824,6 +884,7 @@ export class OrderExpiryProcessor {
 ✅ 城市选择器组件
 ✅ 价格选择器组件
 ✅ 星级选择器组件
+✅ 图片预览组件
 ✅ 组件复用机制
 
 ### 技术亮点

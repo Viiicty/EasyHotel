@@ -3,7 +3,7 @@ import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { HotelEntity } from './hotel.entity';
 import { HotelSubmissionService } from '../hotel-submission/hotel-submission.service';
-import { HomeBannerEntity } from '../home-banner/home-banner.entity';
+import { HotelCoverService } from '../hotel-cover/hotel-cover.service';
 
 
 @Injectable()
@@ -11,9 +11,8 @@ export class HotelService {
   constructor(
     @InjectRepository(HotelEntity)
     private hotelRepository: Repository<HotelEntity>,
-    @InjectRepository(HomeBannerEntity)
-    private homeBannerRepository: Repository<HomeBannerEntity>,
     private readonly hotelSubmissionService: HotelSubmissionService,
+    private readonly hotelCoverService: HotelCoverService,
     @InjectDataSource()
     private dataSource: DataSource,
   ) {}
@@ -33,7 +32,11 @@ export class HotelService {
   }
 
   async findAll(): Promise<HotelEntity[]> {
-    return this.hotelRepository.find();
+    return this.hotelRepository.find({
+      order: {
+        createdTime: 'DESC'
+      }
+    });
   }
 
   async findOne(id: string): Promise<HotelEntity | undefined> {
@@ -71,16 +74,6 @@ export class HotelService {
       const hotel = await queryRunner.manager.getRepository(HotelEntity)
       .findOne({ where: { id } });
               
-      //第三步：将hotel表中的hotel_id、cityCode、coverImage写入homebanner表中
-      await queryRunner.manager.getRepository(HomeBannerEntity)
-      .insert({
-        hotel: { id },
-        cityCode: hotel?.cityCode,
-        coverImage: hotel?.coverImage,
-        createdBy: reviewedBy, //记录创建人
-        status: "PENDING",
-      });
-      
       const updatedHotel = await this.findOne(id);
       
       await queryRunner.commitTransaction();
@@ -117,7 +110,24 @@ export class HotelService {
     return this.hotelRepository
       .createQueryBuilder('hotel')
       .where('hotel.merchantId = :userId', { userId })
+      .andWhere('hotel.status = :status', { status: 'APPROVED' })
       .getMany();
+  }
+
+  async getAllApprovedHotels() {
+    console.log('=== getAllApprovedHotels START ===');
+    const query = this.hotelRepository
+      .createQueryBuilder('hotel')
+      .where('hotel.status = :status', { status: 'APPROVED' });
+    
+    console.log('Query SQL:', query.getSql());
+    
+    const result = await query.getMany();
+    
+    console.log('Found hotels:', result.length);
+    console.log('=== getAllApprovedHotels END ===');
+    
+    return result;
   }
 
   async updateAvailableStatus(id: string, available: string): Promise<HotelEntity | undefined> {
@@ -203,14 +213,14 @@ export class HotelService {
       .getMany();
 
     const hotelIds = hotels.map(hotel => hotel.id);
-    const banners = await this.dataSource.query(
-      'SELECT * FROM home_banner WHERE hotel_id = ANY($1) ORDER BY "sortNo" ASC',
-      [hotelIds]
-    );
-
-    const bannerMap = new Map();
-    banners.forEach(banner => {
-      bannerMap.set(banner.hotel_id, `http://localhost:8888/upload/image/${banner.coverImage}`);
+    
+    const hotelCovers = await this.hotelCoverService.findByHotelIds(hotelIds);
+    
+    const coverMap = new Map();
+    hotelCovers.forEach(cover => {
+      if (!coverMap.has(cover.hotelId)) {
+        coverMap.set(cover.hotelId, `http://localhost:8888/upload/hotelcover/${cover.url}`);
+      }
     });
 
     const defaultCoverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
@@ -290,7 +300,7 @@ export class HotelService {
         extraBedPolicy: hotel.extraBedPolicy,
         createdAt: hotel.createdTime,
         updatedAt: hotel.updatedTime,
-        coverImage: bannerMap.get(hotel.id) || defaultCoverImage,
+        coverImage: coverMap.get(hotel.id) || defaultCoverImage,
         minPrice
       }
     })
@@ -306,17 +316,14 @@ export class HotelService {
       return null;
     }
 
-    const banner = await this.dataSource.query(
-      'SELECT * FROM home_banner WHERE hotel_id = $1 ORDER BY "sortNo" ASC LIMIT 1',
-      [id]
-    );
-
+    const hotelCovers = await this.hotelCoverService.findByHotelId(id);
+    
     console.log('Hotel ID:', id);
-    console.log('Found banner:', banner);
+    console.log('Found hotel covers:', hotelCovers);
 
     let coverImage = null;
-    if (banner && banner.length > 0 && banner[0].coverImage) {
-      coverImage = `http://localhost:8888/upload/image/${banner[0].coverImage}`;
+    if (hotelCovers && hotelCovers.length > 0) {
+      coverImage = `http://localhost:8888/upload/hotelcover/${hotelCovers[0].url}`;
     } else {
       coverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
     }
@@ -603,16 +610,15 @@ export class HotelService {
     let nights = 1;
 
     const defaultCoverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
-    const bannerMap = new Map();
+    const coverMap = new Map();
 
     if (hotelIds.length > 0) {
-      banners = await this.dataSource.query(
-        'SELECT * FROM home_banner WHERE hotel_id = ANY($1) ORDER BY "sortNo" ASC',
-        [hotelIds]
-      );
-
-      banners.forEach(banner => {
-        bannerMap.set(banner.hotel_id, `http://localhost:8888/upload/image/${banner.coverImage}`);
+      const hotelCovers = await this.hotelCoverService.findByHotelIds(hotelIds);
+      
+      hotelCovers.forEach(cover => {
+        if (!coverMap.has(cover.hotelId)) {
+          coverMap.set(cover.hotelId, `http://localhost:8888/upload/hotelcover/${cover.url}`);
+        }
       });
 
       roomTypes = await roomTypeRepository
@@ -668,20 +674,17 @@ export class HotelService {
       const prices = approvedRoomTypes.map(rt => {
         const dailyPriceList = priceMap.get(rt.id) || []
         if (dailyPriceList.length > 0) {
-          const minDailyPrice = Math.min(...dailyPriceList.map(p => parseFloat(p.price)))
-          console.log(`房型 ${rt.name} 每日最低价格:`, minDailyPrice)
-          if (nights === 1) {
-            return minDailyPrice
-          } else {
-            return minDailyPrice / nights
-          }
+          const totalPrice = dailyPriceList.reduce((sum, p) => sum + parseFloat(p.price), 0)
+          console.log(`房型 ${rt.name} 入住${nights}天总价:`, totalPrice)
+          return totalPrice
         }
-        return parseFloat(rt.defaultPrice || 0)
+        return parseFloat(rt.defaultPrice || 0) * nights
       }).filter(p => p > 0)
 
       console.log('房型价格:', prices)
-      const minPrice = prices.length > 0 ? Math.min(...prices) : undefined
-      console.log('最低价格:', minPrice)
+      const minTotalPrice = prices.length > 0 ? Math.min(...prices) : undefined
+      const minPrice = minTotalPrice !== undefined ? Math.round(minTotalPrice / nights) : undefined
+      console.log('最低总价:', minTotalPrice, '最低均价:', minPrice)
 
       return {
         id: hotel.id,
@@ -701,7 +704,7 @@ export class HotelService {
         extraBedPolicy: hotel.extraBedPolicy,
         createdAt: hotel.createdTime,
         updatedAt: hotel.updatedTime,
-        coverImage: bannerMap.get(hotel.id) || defaultCoverImage,
+        coverImage: coverMap.get(hotel.id) || defaultCoverImage,
         minPrice
       }
     })
@@ -736,17 +739,17 @@ export class HotelService {
       .getMany();
 
     const hotelIds = hotels.map(hotel => hotel.id);
-    const banners = await this.dataSource.query(
-      'SELECT * FROM home_banner WHERE hotel_id = ANY($1) ORDER BY "sortNo" ASC',
-      [hotelIds]
-    );
-
+    
+    const hotelCovers = await this.hotelCoverService.findByHotelIds(hotelIds);
+    
     console.log('Hotel IDs:', hotelIds);
-    console.log('Found banners:', banners);
+    console.log('Found hotel covers:', hotelCovers);
 
-    const bannerMap = new Map();
-    banners.forEach(banner => {
-      bannerMap.set(banner.hotel_id, `http://localhost:8888/upload/image/${banner.coverImage}`);
+    const coverMap = new Map();
+    hotelCovers.forEach(cover => {
+      if (!coverMap.has(cover.hotelId)) {
+        coverMap.set(cover.hotelId, `http://localhost:8888/upload/hotelcover/${cover.url}`);
+      }
     });
 
     const defaultCoverImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
@@ -826,7 +829,7 @@ export class HotelService {
         extraBedPolicy: hotel.extraBedPolicy,
         createdAt: hotel.createdTime,
         updatedAt: hotel.updatedTime,
-        coverImage: bannerMap.get(hotel.id) || defaultCoverImage,
+        coverImage: coverMap.get(hotel.id) || defaultCoverImage,
         minPrice
       }
     })

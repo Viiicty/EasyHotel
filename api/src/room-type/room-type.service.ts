@@ -20,7 +20,11 @@ export class RoomTypeService {
   }
 
   async findAll(): Promise<RoomTypeEntity[]> {
-    return this.roomTypeRepository.find();
+    return this.roomTypeRepository.find({
+      order: {
+        createdTime: 'DESC'
+      }
+    });
   }
 
   async findOne(id: string): Promise<RoomTypeEntity | undefined> {

@@ -8,11 +8,13 @@ export class UploadService {
   private readonly uploadDir = './banner';
   private readonly pictureDir = './picture';
   private readonly roomPictureDir = './roompicture';
+  private readonly hotelCoverDir = './hotelcover';
 
   constructor() {
     this.ensureUploadDirExists();
     this.ensurePictureDirExists();
     this.ensureRoomPictureDirExists();
+    this.ensureHotelCoverDirExists();
   }
 
   private ensureUploadDirExists() {
@@ -30,6 +32,12 @@ export class UploadService {
   private ensureRoomPictureDirExists() {
     if (!fs.existsSync(this.roomPictureDir)) {
       fs.mkdirSync(this.roomPictureDir, { recursive: true });
+    }
+  }
+
+  private ensureHotelCoverDirExists() {
+    if (!fs.existsSync(this.hotelCoverDir)) {
+      fs.mkdirSync(this.hotelCoverDir, { recursive: true });
     }
   }
 
@@ -100,5 +108,23 @@ export class UploadService {
       return filePath;
     }
     return null;
+  }
+
+  async getHotelCoverFile(filename: string) {
+    const filePath = path.join(this.hotelCoverDir, filename);
+    console.log('Hotel cover file path:', filePath)
+    if (fs.existsSync(filePath)) {
+      return filePath;
+    }
+    return null;
+  }
+
+  async deleteHotelCoverFile(filename: string) {
+    const filePath = path.join(this.hotelCoverDir, filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      return { success: true, message: 'Hotel cover file deleted successfully' };
+    }
+    return { success: false, message: 'Hotel cover file not found' };
   }
 }

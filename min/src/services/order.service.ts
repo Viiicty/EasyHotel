@@ -3,6 +3,20 @@ import { userService } from './user.service'
 
 const API_BASE = 'http://localhost:8888'
 
+const handleUnauthorized = () => {
+  console.log('检测到 401 错误，清除登录状态')
+  userService.clearUserInfo()
+  Taro.showToast({
+    title: '登录已过期，请重新登录',
+    icon: 'none'
+  })
+  setTimeout(() => {
+    Taro.reLaunch({
+      url: '/pages/login/login'
+    })
+  }, 1500)
+}
+
 export const orderService = {
   getUserOrders: async (params: { status?: string; page?: number; pageSize?: number }) => {
     const token = userService.getToken()
@@ -18,6 +32,11 @@ export const orderService = {
         'Authorization': `Bearer ${token}`
       }
     })
+
+    if (response.statusCode === 401) {
+      handleUnauthorized()
+      return []
+    }
 
     if (response.statusCode !== 200) {
       throw new Error('获取订单列表失败')
@@ -40,6 +59,11 @@ export const orderService = {
     console.log('statusCode:', response.statusCode)
     console.log('data:', response.data)
 
+    if (response.statusCode === 401) {
+      handleUnauthorized()
+      return null
+    }
+
     if (response.statusCode !== 200) {
       console.error('getPendingOrder 失败:', response.data)
       return null
@@ -58,6 +82,11 @@ export const orderService = {
       }
     })
 
+    if (response.statusCode === 401) {
+      handleUnauthorized()
+      return null
+    }
+
     if (response.statusCode !== 200) {
       throw new Error('获取订单详情失败')
     }
@@ -74,6 +103,11 @@ export const orderService = {
         'Authorization': `Bearer ${token}`
       }
     })
+
+    if (response.statusCode === 401) {
+      handleUnauthorized()
+      return null
+    }
 
     if (response.statusCode !== 200) {
       throw new Error('获取订单状态失败')
@@ -92,6 +126,11 @@ export const orderService = {
         'Content-Type': 'application/json'
       }
     })
+
+    if (response.statusCode === 401) {
+      handleUnauthorized()
+      return null
+    }
 
     if (response.statusCode !== 200 && response.statusCode !== 201) {
       throw new Error('确认订单失败')
@@ -114,6 +153,11 @@ export const orderService = {
     console.log('=== cancelOrder 响应 ===')
     console.log('statusCode:', response.statusCode)
     console.log('response.data:', response.data)
+
+    if (response.statusCode === 401) {
+      handleUnauthorized()
+      return null
+    }
 
     if (response.statusCode !== 200 && response.statusCode !== 201) {
       const errorMessage = response.data?.message || response.data?.error || '取消订单失败'
@@ -138,6 +182,11 @@ export const orderService = {
     console.log('statusCode:', response.statusCode)
     console.log('response.data:', response.data)
 
+    if (response.statusCode === 401) {
+      handleUnauthorized()
+      return null
+    }
+
     if (response.statusCode !== 200 && response.statusCode !== 201) {
       const errorMessage = response.data?.message || response.data?.error || '支付失败'
       throw new Error(errorMessage)
@@ -155,6 +204,11 @@ export const orderService = {
         'Authorization': `Bearer ${token}`
       }
     })
+
+    if (response.statusCode === 401) {
+      handleUnauthorized()
+      return null
+    }
 
     if (response.statusCode !== 200) {
       throw new Error('删除订单失败')

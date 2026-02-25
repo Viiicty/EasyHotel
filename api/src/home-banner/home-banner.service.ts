@@ -4,12 +4,14 @@ import { Repository } from 'typeorm';
 import { HomeBannerEntity } from './home-banner.entity';
 import * as fs from 'fs';
 import * as path from 'path';
+import { HotelService } from '../hotel/hotel.service';
 
 @Injectable()
 export class HomeBannerService {
   constructor(
     @InjectRepository(HomeBannerEntity)
     private homeBannerRepository: Repository<HomeBannerEntity>,
+    private hotelService: HotelService,
   ) {}
 
   private getImageAsBase64(filename: string): string | null {
@@ -28,7 +30,22 @@ export class HomeBannerService {
   }
 
   async create(bannerData: Partial<HomeBannerEntity>): Promise<HomeBannerEntity> {
-    const banner = this.homeBannerRepository.create(bannerData);
+    const { hotelId, ...data } = bannerData;
+    
+    let cityCode = data.cityCode;
+    
+    if (hotelId && !cityCode) {
+      const hotel = await this.hotelService.findOne(hotelId);
+      if (hotel) {
+        cityCode = hotel.cityCode;
+      }
+    }
+    
+    const banner = this.homeBannerRepository.create({
+      ...data,
+      hotelId,
+      cityCode
+    });
     return this.homeBannerRepository.save(banner);
   }
 
@@ -76,7 +93,7 @@ export class HomeBannerService {
     });
     return banners.map(banner => ({
       ...banner,
-      coverImage: banner.coverImage ? `http://localhost:8888/upload/image/${banner.coverImage}` : null,
+      coverImage: banner.coverImage ? `http://localhost:8888/upload/banner/${banner.coverImage}` : null,
       hotel: banner.hotel ? { ...banner.hotel, coverImage: undefined } : undefined
     }));
   }

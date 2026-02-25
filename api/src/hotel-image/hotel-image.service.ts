@@ -49,10 +49,19 @@ export class HotelImageService {
   }
 
   async updateSortOrder(images: Array<{ id: string; sortNo: number }>): Promise<void> {
-    await Promise.all(
-      images.map(({ id, sortNo }) =>
-        this.hotelImageRepository.update(id, { sortNo })
+    console.log('=== updateSortOrder START ===')
+    console.log('Images to update:', images)
+    try {
+      await Promise.all(
+        images.map(({ id, sortNo }) => {
+          console.log(`Updating image ${id} with sortNo ${sortNo}`)
+          return this.hotelImageRepository.update(id, { sortNo })
+        })
       )
-    );
+      console.log('=== updateSortOrder END ===')
+    } catch (error) {
+      console.error('Error in updateSortOrder:', error)
+      throw error
+    }
   }
 }

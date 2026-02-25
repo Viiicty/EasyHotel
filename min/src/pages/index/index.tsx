@@ -48,6 +48,7 @@ interface IndexState {
     city: string
     address: string
   }
+  showEarlyMorningTip: boolean
   hotelNamePlaceholder: string
   isHotelNameFocused: boolean
   bookmarkPosition: { x: number; y: number }
@@ -75,13 +76,27 @@ export default class Index extends Component<{}, IndexState> {
     return `${year}-${month}-${day}`
   }
 
+  isEarlyMorning = () => {
+    const now = new Date()
+    const hour = now.getHours()
+    return hour >= 0 && hour < 6
+  }
+
+  getCheckOutDate = () => {
+    if (this.isEarlyMorning()) {
+      return this.getTodayDate()
+    } else {
+      return this.getTomorrowDate()
+    }
+  }
+
   state = {
     bannerList: [],
     searchParams: {
       city: '',
       hotelName: '',
       checkIn: this.getTodayDate(),
-      checkOut: this.getTomorrowDate(),
+      checkOut: this.getCheckOutDate(),
       minPrice: 0,
       maxPrice: 2000,
       starLevel: 0,
@@ -105,6 +120,7 @@ export default class Index extends Component<{}, IndexState> {
       city: '',
       address: ''
     },
+    showEarlyMorningTip: false,
     hotelNamePlaceholder: '请输入酒店名称',
     isHotelNameFocused: false,
     bookmarkPosition: { x: 300, y: 600 },
@@ -116,15 +132,360 @@ export default class Index extends Component<{}, IndexState> {
     '上海': 'shanghai',
     '广州': 'guangzhou',
     '深圳': 'shenzhen',
+    '成都': 'chengdu',
+    '重庆': 'chongqing',
     '杭州': 'hangzhou',
-    '成都': 'chengdu'
+    '武汉': 'wuhan',
+    '西安': 'xian',
+    '天津': 'tianjin',
+    '苏州': 'suzhou',
+    '南京': 'nanjing',
+    '郑州': 'zhengzhou',
+    '长沙': 'changsha',
+    '东莞': 'dongguan',
+    '沈阳': 'shenyang',
+    '青岛': 'qingdao',
+    '合肥': 'hefei',
+    '佛山': 'foshan',
+    '宁波': 'ningbo',
+    '厦门': 'xiamen',
+    '福州': 'fuzhou',
+    '无锡': 'wuxi',
+    '济南': 'jinan',
+    '大连': 'dalian',
+    '哈尔滨': 'haerbin',
+    '长春': 'changchun',
+    '昆明': 'kunming',
+    '贵阳': 'guiyang',
+    '南宁': 'nanning',
+    '兰州': 'lanzhou',
+    '西宁': 'xining',
+    '银川': 'yinchuan',
+    '乌鲁木齐': 'wulumuqi',
+    '拉萨': 'lasa',
+    '太原': 'taiyuan',
+    '石家庄': 'shijiazhuang',
+    '唐山': 'tangshan',
+    '包头': 'baotou',
+    '呼和浩特': 'huhehaote',
+    '吉林': 'jilin',
+    '齐齐哈尔': 'qiqihaer',
+    '鸡西': 'jixi',
+    '鹤岗': 'hegang',
+    '双鸭山': 'shuangyashan',
+    '大庆': 'daqing',
+    '伊春': 'yichun',
+    '佳木斯': 'jiamusi',
+    '七台河': 'qitaihe',
+    '牡丹江': 'mudanjiang',
+    '黑河': 'heihe',
+    '绥化': 'suihua',
+    '徐州': 'xuzhou',
+    '常州': 'changzhou',
+    '南通': 'nantong',
+    '连云港': 'lianyungang',
+    '淮安': 'huaian',
+    '盐城': 'yancheng',
+    '扬州': 'yangzhou',
+    '镇江': 'zhenjiang',
+    '泰州': 'taizhou',
+    '宿迁': 'suqian',
+    '温州': 'wenzhou',
+    '嘉兴': 'jiaxing',
+    '湖州': 'huzhou',
+    '绍兴': 'shaoxing',
+    '金华': 'jinhua',
+    '衢州': 'quzhou',
+    '舟山': 'zhoushan',
+    '台州': 'taizhou',
+    '丽水': 'lishui',
+    '芜湖': 'wuhu',
+    '蚌埠': 'bengbu',
+    '淮南': 'huainan',
+    '马鞍山': 'maanshan',
+    '淮北': 'huaibei',
+    '铜陵': 'tongling',
+    '安庆': 'anqing',
+    '黄山': 'huangshan',
+    '滁州': 'chuzhou',
+    '阜阳': 'fuyang',
+    '六安': 'luan',
+    '亳州': 'bozhou',
+    '池州': 'chizhou',
+    '宣城': 'xuancheng',
+    '莆田': 'putian',
+    '三明': 'sanming',
+    '泉州': 'quanzhou',
+    '漳州': 'zhangzhou',
+    '南平': 'nanping',
+    '龙岩': 'longyan',
+    '宁德': 'ningde',
+    '南昌': 'nanchang',
+    '景德镇': 'jingdezhen',
+    '萍乡': 'pingxiang',
+    '九江': 'jiujiang',
+    '新余': 'xinyu',
+    '鹰潭': 'yingtan',
+    '赣州': 'ganzhou',
+    '吉安': 'jian',
+    '宜春': 'yichun',
+    '抚州': 'fuzhou',
+    '上饶': 'shangrao',
+    '淄博': 'zibo',
+    '枣庄': 'zaozhuang',
+    '东营': 'dongying',
+    '烟台': 'yantai',
+    '潍坊': 'weifang',
+    '济宁': 'jining',
+    '泰安': 'taian',
+    '威海': 'weihai',
+    '日照': 'rizhao',
+    '临沂': 'linyi',
+    '德州': 'dezhou',
+    '聊城': 'liaocheng',
+    '滨州': 'binzhou',
+    '菏泽': 'heze',
+    '开封': 'kaifeng',
+    '洛阳': 'luoyang',
+    '平顶山': 'pingdingshan',
+    '安阳': 'anyang',
+    '新乡': 'xinxiang',
+    '焦作': 'jiaozuo',
+    '濮阳': 'puyang',
+    '许昌': 'xuchang',
+    '漯河': 'luohe',
+    '三门峡': 'sanmenxia',
+    '南阳': 'nanyang',
+    '商丘': 'shangqiu',
+    '信阳': 'xinyang',
+    '周口': 'zhoukou',
+    '驻马店': 'zhumadian',
+    '黄石': 'huangshi',
+    '十堰': 'shiyan',
+    '宜昌': 'yichang',
+    '襄阳': 'xiangyang',
+    '鄂州': 'ezhou',
+    '荆门': 'jingmen',
+    '孝感': 'xiaogan',
+    '荆州': 'jingzhou',
+    '黄冈': 'huanggang',
+    '咸宁': 'xianning',
+    '随州': 'suizhou',
+    '恩施': 'enshi',
+    '株洲': 'zhuzhou',
+    '湘潭': 'xiangtan',
+    '衡阳': 'hengyang',
+    '邵阳': 'shaoyang',
+    '岳阳': 'yueyang',
+    '常德': 'changde',
+    '张家界': 'zhangjiajie',
+    '益阳': 'yiyang',
+    '郴州': 'chenzhou',
+    '永州': 'yongzhou',
+    '怀化': 'huaihua',
+    '娄底': 'loudi',
+    '湘西': 'xiangxi',
+    '韶关': 'shaoguan',
+    '珠海': 'zhuhai',
+    '汕头': 'shantou',
+    '江门': 'jiangmen',
+    '湛江': 'zhanjiang',
+    '茂名': 'maoming',
+    '肇庆': 'zhaoqing',
+    '惠州': 'huizhou',
+    '梅州': 'meizhou',
+    '汕尾': 'shanwei',
+    '河源': 'heyuan',
+    '阳江': 'yangjiang',
+    '清远': 'qingyuan',
+    '中山': 'zhongshan',
+    '潮州': 'chaozhou',
+    '揭阳': 'jieyang',
+    '云浮': 'yunfu',
+    '柳州': 'liuzhou',
+    '梧州': 'wuzhou',
+    '北海': 'beihai',
+    '防城港': 'fangchenggang',
+    '钦州': 'qinzhou',
+    '贵港': 'guigang',
+    '玉林': 'yulin',
+    '百色': 'baise',
+    '贺州': 'hezhou',
+    '河池': 'hechi',
+    '来宾': 'laibin',
+    '崇左': 'chongzuo',
+    '海口': 'haikou',
+    '三亚': 'sanya',
+    '三沙': 'sansha',
+    '儋州': 'danzhou',
+    '自贡': 'zigong',
+    '攀枝花': 'panzhihua',
+    '泸州': 'luzhou',
+    '德阳': 'deyang',
+    '绵阳': 'mianyang',
+    '广元': 'guangyuan',
+    '遂宁': 'suining',
+    '内江': 'neijiang',
+    '乐山': 'leshan',
+    '南充': 'nanchong',
+    '眉山': 'meishan',
+    '宜宾': 'yibin',
+    '广安': 'guangan',
+    '达州': 'dazhou',
+    '雅安': 'yaan',
+    '巴中': 'bazhong',
+    '资阳': 'ziyang',
+    '阿坝': 'aba',
+    '甘孜': 'ganzi',
+    '凉山': 'liangshan',
+    '六盘水': 'liupanshui',
+    '遵义': 'zunyi',
+    '安顺': 'anshun',
+    '毕节': 'bijie',
+    '铜仁': 'tongren',
+    '黔西南': 'qianxinan',
+    '黔东南': 'qiandongnan',
+    '黔南': 'qiannan',
+    '曲靖': 'qujing',
+    '玉溪': 'yuxi',
+    '保山': 'baoshan',
+    '昭通': 'zhaotong',
+    '普洱': 'puer',
+    '临沧': 'lincang',
+    '楚雄': 'chuxiong',
+    '红河': 'honghe',
+    '文山': 'wenshan',
+    '西双版纳': 'xishuangbanna',
+    '大理': 'dali',
+    '德宏': 'dehong',
+    '怒江': 'nujiang',
+    '迪庆': 'diqing',
+    '昌都': 'changdu',
+    '山南': 'shannan',
+    '日喀则': 'shigatse',
+    '那曲': 'nagqu',
+    '阿里': 'ali',
+    '林芝': 'linzhi',
+    '铜川': 'tongchuan',
+    '宝鸡': 'baoji',
+    '咸阳': 'xianyang',
+    '渭南': 'weinan',
+    '延安': 'yanan',
+    '汉中': 'hanzhong',
+    '榆林': 'yulin',
+    '安康': 'ankang',
+    '商洛': 'shangluo',
+    '嘉峪关': 'jiayuguan',
+    '金昌': 'jinchang',
+    '白银': 'baiyin',
+    '天水': 'tianshui',
+    '武威': 'wuwei',
+    '张掖': 'zhangye',
+    '平凉': 'pingliang',
+    '酒泉': 'jiuquan',
+    '庆阳': 'qingyang',
+    '定西': 'dingxi',
+    '陇南': 'longnan',
+    '临夏': 'linxia',
+    '甘南': 'gannan',
+    '海东': 'haidong',
+    '海北': 'haibei',
+    '黄南': 'huangnan',
+    '海南': 'hainan',
+    '果洛': 'guoluo',
+    '玉树': 'yushu',
+    '海西': 'haixi',
+    '石嘴山': 'shizuishan',
+    '吴忠': 'wuzhong',
+    '固原': 'guyuan',
+    '中卫': 'zhongwei',
+    '克拉玛依': 'kelamayi',
+    '吐鲁番': 'turpan',
+    '哈密': 'hami',
+    '昌吉': 'changji',
+    '博尔塔拉': 'bortala',
+    '巴音郭楞': 'bayingolin',
+    '阿克苏': 'aksu',
+    '克孜勒苏': 'kezilesu',
+    '喀什': 'kashgar',
+    '和田': 'hetian',
+    '伊犁': 'ili',
+    '塔城': 'tacheng',
+    '阿勒泰': 'altay',
+    '石河子': 'shihezi',
+    '阿拉尔': 'alashan',
+    '图木舒克': 'tumushuke',
+    '五家渠': 'wujiaqu',
+    '北屯': 'beitun',
+    '铁门关': 'tiemenguan',
+    '双河': 'shuanghe',
+    '可克达拉': 'kokdala',
+    '昆玉': 'kunyu',
+    '胡杨河': 'huyanghe',
+    '台北': 'taipei',
+    '新北': 'xinbei',
+    '桃园': 'taoyuan',
+    '台中': 'taichung',
+    '台南': 'tainan',
+    '高雄': 'kaohsiung',
+    '基隆': 'keelung',
+    '新竹': 'hsinchu',
+    '嘉义': 'chiayi',
+    '香港': 'hongkong',
+    '澳门': 'macau'
   }
 
   componentDidShow() {
+    const today = this.getTodayDate()
+    const tomorrow = this.getTomorrowDate()
+    const savedCheckIn = Taro.getStorageSync('selectedCheckIn')
+    const savedCheckOut = Taro.getStorageSync('selectedCheckOut')
+    
+    const isEarlyMorning = this.isEarlyMorning()
+    console.log('当前是否凌晨:', isEarlyMorning)
+    console.log('今天的日期:', today)
+    console.log('明天的日期:', tomorrow)
+    console.log('保存的入住日期:', savedCheckIn)
+    console.log('保存的退房日期:', savedCheckOut)
+    
+    const defaultCheckIn = today
+    const defaultCheckOut = isEarlyMorning ? today : tomorrow
+
+    console.log('默认入住日期:', defaultCheckIn)
+    console.log('默认退房日期:', defaultCheckOut)
+
+    let finalCheckIn, finalCheckOut
+
+    if (savedCheckIn && savedCheckOut && savedCheckIn === today) {
+      finalCheckIn = savedCheckIn
+      finalCheckOut = savedCheckOut
+      console.log('使用保存的日期')
+    } else {
+      finalCheckIn = defaultCheckIn
+      finalCheckOut = defaultCheckOut
+      Taro.setStorageSync('selectedCheckIn', finalCheckIn)
+      Taro.setStorageSync('selectedCheckOut', finalCheckOut)
+      console.log('使用默认日期')
+    }
+
+    console.log('最终入住日期:', finalCheckIn)
+    console.log('最终退房日期:', finalCheckOut)
+
+    console.log('设置显示提示:', isEarlyMorning)
+    this.setState({ showEarlyMorningTip: isEarlyMorning })
+
     this.loadBanners()
     this.loadRecommendHotels()
     this.loadAllTags()
     this.loadPendingOrder()
+
+    this.setState(prevState => ({
+      searchParams: {
+        ...prevState.searchParams,
+        checkIn: finalCheckIn,
+        checkOut: finalCheckOut
+      }
+    }))
 
     const systemInfo = Taro.getSystemInfoSync()
     const screenWidth = systemInfo.windowWidth
@@ -140,18 +501,6 @@ export default class Index extends Component<{}, IndexState> {
         y: screenHeight - bookmarkSize - margin
       }
     })
-
-    const savedCheckIn = Taro.getStorageSync('selectedCheckIn')
-    const savedCheckOut = Taro.getStorageSync('selectedCheckOut')
-    if (savedCheckIn && savedCheckOut) {
-      this.setState(prevState => ({
-        searchParams: {
-          ...prevState.searchParams,
-          checkIn: savedCheckIn,
-          checkOut: savedCheckOut
-        }
-      }))
-    }
   }
 
   componentDidHide() {
@@ -415,7 +764,139 @@ export default class Index extends Component<{}, IndexState> {
       'luxury': '豪华',
       'business': '商务',
       'airport': '近机场',
-      'subway': '近地铁'
+      'subway': '近地铁',
+      'beachfront': '海滨酒店',
+      'ocean_view': '海景房',
+      'mountain_view': '山景房',
+      'city_view': '城市景观',
+      'garden_view': '花园景观',
+      'lake_view': '湖景房',
+      'river_view': '江景房',
+      'park_view': '公园景观',
+      'skyline': '天际线景观',
+      'rooftop': '屋顶酒吧',
+      'terrace': '露台',
+      'balcony': '阳台',
+      'patio': '庭院',
+      'garden': '花园',
+      'courtyard': '中庭',
+      'historic': '历史建筑',
+      'modern': '现代设计',
+      'boutique': '精品酒店',
+      'design': '设计酒店',
+      'art': '艺术酒店',
+      'eco': '生态酒店',
+      'green': '绿色酒店',
+      'sustainable': '可持续酒店',
+      'organic': '有机酒店',
+      'vegan': '素食友好',
+      'gluten_free': '无麸质',
+      'halal': '清真食品',
+      'kosher': '犹太洁食',
+      'pet_friendly': '宠物友好',
+      'dog_friendly': '狗狗友好',
+      'cat_friendly': '猫咪友好',
+      'smoke_free': '无烟酒店',
+      'allergy_friendly': '过敏友好',
+      'wheelchair_accessible': '轮椅无障碍',
+      'hearing_impaired': '听力障碍友好',
+      'visually_impaired': '视力障碍友好',
+      'autism_friendly': '自闭症友好',
+      'honeymoon': '蜜月酒店',
+      'wedding': '婚礼场地',
+      'anniversary': '纪念日',
+      'birthday': '生日派对',
+      'bachelor_party': '单身派对',
+      'bachelorette_party': '新娘派对',
+      'reunion': '家庭聚会',
+      'corporate_event': '企业活动',
+      'team_building': '团队建设',
+      'retreat': '静修',
+      'workshop': '研讨会',
+      'seminar': '研讨会',
+      'conference': '会议',
+      'exhibition': '展览',
+      'trade_show': '贸易展',
+      'fashion_show': '时装秀',
+      'concert': '音乐会',
+      'performance': '演出',
+      'theater': '剧院',
+      'cinema': '电影院',
+      'nightlife': '夜生活',
+      'casino': '赌场',
+      'nightclub': '夜店',
+      'karaoke': '卡拉OK',
+      'live_music': '现场音乐',
+      'dj': 'DJ表演',
+      'comedy': '喜剧表演',
+      'magic_show': '魔术表演',
+      'acrobatics': '杂技表演',
+      'cultural_show': '文化表演',
+      'traditional_show': '传统表演',
+      'folk_show': '民俗表演',
+      'dance_show': '舞蹈表演',
+      'music_show': '音乐表演',
+      'art_exhibition': '艺术展览',
+      'sculpture_exhibition': '雕塑展览',
+      'photography_exhibition': '摄影展览',
+      'craft_market': '手工艺市场',
+      'flea_market': '跳蚤市场',
+      'farmers_market': '农贸市场',
+      'food_market': '食品市场',
+      'night_market': '夜市',
+      'street_food': '街头美食',
+      'food_court': '美食广场',
+      'hawker_center': '小贩中心',
+      'coffee_shop': '咖啡店',
+      'tea_house': '茶馆',
+      'bakery': '面包店',
+      'pastry_shop': '糕点店',
+      'ice_cream': '冰淇淋店',
+      'juice_bar': '果汁吧',
+      'smoothie_bar': '冰沙吧',
+      'wine_bar': '葡萄酒吧',
+      'whiskey_bar': '威士忌吧',
+      'cocktail_bar': '鸡尾酒吧',
+      'beer_garden': '啤酒花园',
+      'brewery': '酿酒厂',
+      'distillery': '蒸馏厂',
+      'winery': '酒庄',
+      'vineyard': '葡萄园',
+      'olive_grove': '橄榄园',
+      'orchard': '果园',
+      'farm': '农场',
+      'ranch': '牧场',
+      'vineyard_tour': '葡萄园游览',
+      'winery_tour': '酒庄游览',
+      'brewery_tour': '酿酒厂游览',
+      'distillery_tour': '蒸馏厂游览',
+      'farm_tour': '农场游览',
+      'orchard_tour': '果园游览',
+      'cooking_class': '烹饪课程',
+      'wine_tasting': '品酒',
+      'beer_tasting': '品啤酒',
+      'cheese_tasting': '品奶酪',
+      'chocolate_tasting': '品巧克力',
+      'coffee_tasting': '品咖啡',
+      'tea_tasting': '品茶',
+      'olive_oil_tasting': '品橄榄油',
+      'honey_tasting': '品蜂蜜',
+      'jam_tasting': '品果酱',
+      'preserves_tasting': '品果脯',
+      'local_food': '当地美食',
+      'regional_cuisine': '地方菜系',
+      'international_cuisine': '国际菜系',
+      'fusion_cuisine': '融合菜系',
+      'molecular_cuisine': '分子料理',
+      'love': '适合情侣',
+      'car': '接送机服务',
+      'elderly_friendly': '老年友好',
+      'child_friendly': '儿童友好',
+      'teen_friendly': '青少年友好',
+      'adult_only': '成人专用',
+      'women_only': '女性专用',
+      'men_only': '男性专用',
+      'lgbt_friendly': 'LGBT友好'
     }
     return labelMap[tag] || tag
   }
@@ -642,7 +1123,11 @@ export default class Index extends Component<{}, IndexState> {
   }
 
   handleCityClick = () => {
-    this.setState({ showCityModal: true })
+    this.setState({ showCityModal: true, showEarlyMorningTip: false })
+  }
+
+  handleEarlyMorningTipClick = () => {
+    this.setState({ showEarlyMorningTip: false })
   }
 
   handleCityConfirm = () => {
@@ -673,14 +1158,21 @@ export default class Index extends Component<{}, IndexState> {
   }
 
   handleCalendarConfirm = (startDate: string, endDate: string) => {
+    const today = this.getTodayDate()
+    const shouldShowTip = startDate === today && endDate === today && this.isEarlyMorning()
+    
     this.setState({
       searchParams: {
         ...this.state.searchParams,
         checkIn: startDate,
         checkOut: endDate
       },
-      showCalendar: false
+      showCalendar: false,
+      showEarlyMorningTip: shouldShowTip
     })
+    
+    Taro.setStorageSync('selectedCheckIn', startDate)
+    Taro.setStorageSync('selectedCheckOut', endDate)
   }
 
   handleCalendarClose = () => {
@@ -750,7 +1242,7 @@ export default class Index extends Component<{}, IndexState> {
 
 
   render() {
-    const { bannerList, recommendHotels, availableTags, pendingOrder, remainingTime, searchParams, displayCity, showPriceModal, showStarModal, showCityModal, locationBubble, bookmarkPosition } = this.state
+    const { bannerList, recommendHotels, availableTags, pendingOrder, remainingTime, searchParams, displayCity, showPriceModal, showStarModal, showCityModal, locationBubble, bookmarkPosition, showEarlyMorningTip } = this.state
     const isLoading = bannerList.length === 0 || recommendHotels.length === 0 || availableTags.length === 0
 
     return (
@@ -835,6 +1327,11 @@ export default class Index extends Component<{}, IndexState> {
                   <Text className='arrow'>▼</Text>
                 </View>
               </View>
+              {showEarlyMorningTip && (
+                <View className='early-morning-tip'>
+                  <Text className='tip-text'>🌙当前时间已过0点，已选择今天凌晨6点前入住，中午离店</Text>
+                </View>
+              )}
             </View>
 
             <View className='form-row'>

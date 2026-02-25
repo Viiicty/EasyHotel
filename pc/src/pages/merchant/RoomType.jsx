@@ -716,8 +716,8 @@ function RoomType() {
           form={form}
           layout="vertical"
           initialValues={{
-            areaSqm: 30,
-            bedType: '大床',
+            areaSqm: '30',
+            bedType: '1张1.8米大床',
             maxGuests: 2,
             breakfast: false,
           }}
@@ -731,11 +731,11 @@ function RoomType() {
           </Form.Item>
 
           <Form.Item
-            label="面积（㎡）"
+            label="面积"
             name="areaSqm"
             rules={[{ required: true, message: '请输入面积' }]}
           >
-            <InputNumber min={10} max={200} style={{ width: '100%' }} />
+            <Input placeholder="请输入面积，如：30" />
           </Form.Item>
 
           <Form.Item
@@ -744,10 +744,12 @@ function RoomType() {
             rules={[{ required: true, message: '请选择床型' }]}
           >
             <Select placeholder="请选择床型">
-              <Select.Option value="大床">大床</Select.Option>
-              <Select.Option value="双床">双床</Select.Option>
-              <Select.Option value="特大床">特大床</Select.Option>
-              <Select.Option value="单人床">单人床</Select.Option>
+              <Select.Option value="1张2.0米特大床">1张2.0米特大床</Select.Option>
+              <Select.Option value="1张2.2米特大床">1张2.2米特大床</Select.Option>
+              <Select.Option value="1张1.8米大床">1张1.8米大床</Select.Option>
+              <Select.Option value="2张1.51米大床">2张1.51米大床</Select.Option>
+              <Select.Option value="2张1.2m单人床">2张1.2m单人床</Select.Option>
+              <Select.Option value="1张1.51米大床">1张1.51米大床</Select.Option>
             </Select>
           </Form.Item>
 

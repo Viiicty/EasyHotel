@@ -43,6 +43,19 @@ export class HotelController {
     return this.hotelService.findByCityCode(cityCode);
   }
 
+  @Get('approved')
+  async getApprovedHotels(): Promise<HotelEntity[]> {
+    console.log('=== getApprovedHotels START ===');
+    try {
+      const result = await this.hotelService.getAllApprovedHotels();
+      console.log('=== getApprovedHotels END, returning', result.length, 'hotels ===');
+      return result;
+    } catch (error) {
+      console.error('=== getApprovedHotels ERROR ===', error);
+      throw error;
+    }
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<HotelEntity> {
     return this.hotelService.findOne(id);
@@ -191,6 +204,58 @@ export class MiniHotelController {
     } catch (error) {
       console.error('逆地理编码错误:', error)
       throw new Error('逆地理编码失败')
+    }
+  }
+
+  @Public()
+  @Get('geocode')
+  async geocode(
+    @Query('address') address: string,
+    @Query('city') city?: string
+  ): Promise<any> {
+    try {
+      const AMAP_KEY = process.env.AMAP_KEY || 'cbb0e9da5dc2bd7edb1d5cb63af8e039'
+      let url = `https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(address)}&key=${AMAP_KEY}`
+      
+      if (city) {
+        url += `&city=${encodeURIComponent(city)}`
+      }
+      
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('地理编码错误:', error)
+      throw new Error('地理编码失败')
+    }
+  }
+
+  @Public()
+  @Get('search-poi')
+  async searchPoi(
+    @Query('keyword') keyword: string,
+    @Query('city') city?: string
+  ): Promise<any> {
+    try {
+      const AMAP_KEY = process.env.AMAP_KEY || 'cbb0e9da5dc2bd7edb1d5cb63af8e039'
+      let url = `https://restapi.amap.com/v5/place/text?keywords=${encodeURIComponent(keyword)}&types=酒店&key=${AMAP_KEY}`
+      
+      if (city) {
+        url += `&city=${encodeURIComponent(city)}`
+      }
+      
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('POI搜索错误:', error)
+      throw new Error('POI搜索失败')
     }
   }
 

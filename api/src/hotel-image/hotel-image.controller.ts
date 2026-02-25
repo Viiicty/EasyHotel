@@ -53,14 +53,6 @@ export class HotelImageController {
     return this.hotelImageService.findOne(id);
   }
 
-  @Put(':id')
-  async update(@Param('id') id: string, @Body() imageData: Partial<HotelImageEntity>, @Request() req): Promise<HotelImageEntity> {
-    return this.hotelImageService.update(id, {
-      ...imageData,
-      updatedBy: req.user?.id,
-    });
-  }
-
   @Delete(':id')
   async remove(@Param('id') id: string): Promise<void> {
     return this.hotelImageService.remove(id);
@@ -78,6 +70,16 @@ export class HotelImageController {
 
   @Put('sort-order')
   async updateSortOrder(@Body() images: Array<{ id: string; sortNo: number }>): Promise<void> {
+    console.log('=== HotelImageController.updateSortOrder ===')
+    console.log('Images:', images)
     return this.hotelImageService.updateSortOrder(images);
+  }
+
+  @Put(':id')
+  async update(@Param('id') id: string, @Body() imageData: Partial<HotelImageEntity>, @Request() req): Promise<HotelImageEntity> {
+    return this.hotelImageService.update(id, {
+      ...imageData,
+      updatedBy: req.user?.id,
+    });
   }
 }

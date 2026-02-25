@@ -7,18 +7,39 @@ import { Public } from '../common/public.decorator';
 export class HomeBannerController {
   constructor(private readonly homeBannerService: HomeBannerService) {}
 
+  /*********************小程序 *********************/
+
+  @Public()
+  @Get('mini/active')
+  async findActiveBanners(): Promise<HomeBannerEntity[]> {
+    return this.homeBannerService.findActiveBanners();
+  }
+
+  @Public()
+  @Get('mini/city/:cityCode')
+  async findByCityCode(@Param('cityCode') cityCode: string): Promise<HomeBannerEntity[]> {
+    return this.homeBannerService.findByCityCode(cityCode);
+  }
+
+  @Public()
+  @Get('mini/hotel/:hotelId')
+  async findByHotelId(@Param('hotelId') hotelId: string): Promise<HomeBannerEntity[]> {
+    return this.homeBannerService.findByHotelId(hotelId);
+  }
+
+  /*********************管理端 *********************/
+
+  @Get()
+  async findAll(): Promise<HomeBannerEntity[]> {
+    return this.homeBannerService.findAll();
+  }
+
   @Post()
   async create(@Body() bannerData: Partial<HomeBannerEntity>, @Request() req): Promise<HomeBannerEntity> {
     return this.homeBannerService.create({
       ...bannerData,
       createdBy: req.user.id,
     });
-  }
-
-  @Public()
-  @Get()
-  async findAll(): Promise<HomeBannerEntity[]> {
-    return this.homeBannerService.findAll();
   }
 
   @Public()
@@ -38,25 +59,5 @@ export class HomeBannerController {
   @Delete(':id')
   async remove(@Param('id') id: string): Promise<void> {
     return this.homeBannerService.remove(id);
-  }
-
-  /*********************小程序 *********************/
-
-  @Public()
-  @Get('mini/active')
-  async findActiveBanners(): Promise<HomeBannerEntity[]> {
-    return this.homeBannerService.findActiveBanners();
-  }
-
-  @Public()
-  @Get('mini/city/:cityCode')
-  async findByCityCode(@Param('cityCode') cityCode: string): Promise<HomeBannerEntity[]> {
-    return this.homeBannerService.findByCityCode(cityCode);
-  }
-
-  @Public()
-  @Get('mini/hotel/:hotelId')
-  async findByHotelId(@Param('hotelId') hotelId: string): Promise<HomeBannerEntity[]> {
-    return this.homeBannerService.findByHotelId(hotelId);
   }
 }

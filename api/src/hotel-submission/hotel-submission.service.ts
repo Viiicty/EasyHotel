@@ -18,7 +18,11 @@ export class HotelSubmissionService {
   }
 
   async findAll(): Promise<HotelSubmissionEntity[]> {
-    return this.hotelSubmissionRepository.find();
+    return this.hotelSubmissionRepository.find({
+      order: {
+        createdTime: 'DESC'
+      }
+    });
   }
 
   async findOne(id: string): Promise<HotelSubmissionEntity | undefined> {

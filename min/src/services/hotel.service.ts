@@ -76,6 +76,13 @@ export interface HotelImage {
   sortNo: number
 }
 
+export interface HotelCover {
+  id: string
+  hotelId: string
+  url: string
+  createdTime: string
+}
+
 export interface RoomTypePicture {
   id: string
   hotelId: string
@@ -296,6 +303,21 @@ export const hotelService = {
       return res.data.data || []
     } catch (error) {
       console.error('获取酒店图片失败:', error)
+      return []
+    }
+  },
+
+  async getHotelCovers(hotelId: string): Promise<HotelCover[]> {
+    try {
+      const res = await request({
+        url: `${BASE_URL}/hotel-cover/hotel/${hotelId}`,
+        method: 'GET'
+      })
+      console.log('getHotelCovers response:', res)
+      console.log('getHotelCovers res.data:', res.data)
+      return res.data.data || []
+    } catch (error) {
+      console.error('获取酒店封面失败:', error)
       return []
     }
   },

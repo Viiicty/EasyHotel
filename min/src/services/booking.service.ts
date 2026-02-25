@@ -3,6 +3,20 @@ import { userService } from './user.service'
 
 const BASE_URL = 'http://localhost:8888'
 
+const handleUnauthorized = () => {
+  console.log('检测到 401 错误，清除登录状态')
+  userService.clearUserInfo()
+  Taro.showToast({
+    title: '登录已过期，请重新登录',
+    icon: 'none'
+  })
+  setTimeout(() => {
+    Taro.reLaunch({
+      url: '/pages/login/login'
+    })
+  }, 1500)
+}
+
 export const bookingService = {
   async checkInventory(params: {
     roomTypeId: string
@@ -24,6 +38,12 @@ export const bookingService = {
     console.log('response:', response)
     console.log('response.data:', response.data)
     console.log('response.data.data:', response.data?.data)
+    
+    if (response.statusCode === 401) {
+      handleUnauthorized()
+      return null
+    }
+    
     return response.data?.data || response.data
   },
 
@@ -50,6 +70,12 @@ export const bookingService = {
     console.log('response:', response)
     console.log('response.data:', response.data)
     console.log('response.data.data:', response.data?.data)
+    
+    if (response.statusCode === 401) {
+      handleUnauthorized()
+      return null
+    }
+    
     return response.data?.data || response.data
   },
 
@@ -81,6 +107,12 @@ export const bookingService = {
     console.log('response:', response)
     console.log('response.data:', response.data)
     console.log('response.data.data:', response.data?.data)
+    
+    if (response.statusCode === 401) {
+      handleUnauthorized()
+      return null
+    }
+    
     return response.data?.data || response.data
   },
 
@@ -102,6 +134,12 @@ export const bookingService = {
     console.log('response:', response)
     console.log('response.data:', response.data)
     console.log('response.data.data:', response.data?.data)
+    
+    if (response.statusCode === 401) {
+      handleUnauthorized()
+      return null
+    }
+    
     return response.data?.data || response.data
   },
 
@@ -123,6 +161,12 @@ export const bookingService = {
     console.log('response:', response)
     console.log('response.data:', response.data)
     console.log('response.data.data:', response.data?.data)
+    
+    if (response.statusCode === 401) {
+      handleUnauthorized()
+      return null
+    }
+    
     return response.data?.data || response.data
   },
 

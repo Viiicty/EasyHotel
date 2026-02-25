@@ -20,8 +20,8 @@ export class RoomTypeEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 32, nullable: true, comment: '是否含早' })
   breakfast?: string;
 
-  @Column({ type: 'decimal', precision: 24, scale: 6, nullable: true, comment: '房间大小' })
-  areaSqm?: number;
+  @Column({ type: 'varchar', length: 50, nullable: true, comment: '房间大小' })
+  areaSqm?: string;
 
   @Column({ type: 'int', nullable: true, comment: '最多可入住人数' })
   maxGuests?: number;

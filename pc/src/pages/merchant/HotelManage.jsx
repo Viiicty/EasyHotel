@@ -173,6 +173,167 @@ function HotelManage() {
     }
   }
 
+  const handleManageImages = async (hotel) => {
+    try {
+      console.log('=== handleManageImages ===')
+      console.log('Hotel:', hotel)
+      setCurrentHotel(hotel)
+      setLoading(true)
+      const token = getToken()
+      const url = `${API_BASE}/hotel-image/hotel/${hotel.id}`
+      console.log('Request URL:', url)
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      console.log('Response status:', response.status)
+      const result = await response.json()
+      console.log('Response data:', result)
+      if (response.ok) {
+        setImageList(result.data || [])
+        setImageModalVisible(true)
+      } else {
+        message.error(result.message || '加载图片失败')
+      }
+    } catch (error) {
+      console.error('Load images error:', error)
+      message.error('加载图片失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleImageUpload = async (info) => {
+    console.log('=== handleImageUpload ===')
+    console.log('Upload info:', info)
+    if (info.file.status === 'done') {
+      const responseUrl = info.file.response?.data?.url || info.file.response
+      console.log('Response URL:', responseUrl)
+      if (responseUrl) {
+        const newImage = {
+          hotelId: currentHotel.id,
+          url: responseUrl,
+          sortNo: imageList.length,
+        }
+        console.log('New image data:', newImage)
+        const token = getToken()
+        const response = await fetch(`${API_BASE}/hotel-image`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(newImage)
+        })
+        console.log('Create image response status:', response.status)
+        const result = await response.json()
+        console.log('Create image response data:', result)
+        if (response.ok) {
+          message.success('图片上传成功')
+          handleManageImages(currentHotel)
+        } else {
+          message.error(result.message || '图片上传失败')
+        }
+      }
+      setUploading(false)
+    } else if (info.file.status === 'uploading') {
+      setUploading(true)
+    } else if (info.file.status === 'error') {
+      console.error('Upload error:', info.file.error)
+      message.error('图片上传失败')
+      setUploading(false)
+    }
+  }
+
+  const handleDeleteImage = async (imageId) => {
+    try {
+      setLoading(true)
+      const token = getToken()
+      const response = await fetch(`${API_BASE}/hotel-image/${imageId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        message.success('删除成功')
+        handleManageImages(currentHotel)
+      } else {
+        message.error('删除失败')
+      }
+    } catch (error) {
+      console.error('Delete image error:', error)
+      message.error('删除失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleImageDragStart = (e, imageId) => {
+    setDraggingImageId(imageId)
+  }
+
+  const handleImageDragOver = (e) => {
+    e.preventDefault()
+  }
+
+  const handleImageDrop = async (e, targetImageId) => {
+    e.preventDefault()
+    if (draggingImageId === targetImageId) {
+      return
+    }
+
+    const newImageList = [...imageList]
+    const draggingIndex = newImageList.findIndex(img => img.id === draggingImageId)
+    const targetIndex = newImageList.findIndex(img => img.id === targetImageId)
+
+    if (draggingIndex !== -1 && targetIndex !== -1) {
+      const [draggingImage] = newImageList.splice(draggingIndex, 1)
+      newImageList.splice(targetIndex, 0, draggingImage)
+
+      const sortOrder = newImageList.map((img, index) => ({
+        id: img.id,
+        sortNo: index
+      }))
+
+      console.log('=== handleImageDrop ===')
+      console.log('New image list:', newImageList)
+      console.log('Sort order to send:', sortOrder)
+
+      try {
+        setLoading(true)
+        const token = getToken()
+        const response = await fetch(`${API_BASE}/hotel-image/sort-order`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(sortOrder)
+        })
+
+        console.log('Sort order response status:', response.status)
+        
+        if (response.ok) {
+          setImageList(newImageList)
+          message.success('排序更新成功')
+        } else {
+          const result = await response.json()
+          console.error('Sort order error response:', result)
+          message.error(result.message || '排序更新失败')
+        }
+      } catch (error) {
+        console.error('Update sort order error:', error)
+        message.error('排序更新失败')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    setDraggingImageId(null)
+  }
+
   const columns = [
     {
       title: '酒店名称',
@@ -204,13 +365,12 @@ function HotelManage() {
       title: '操作',
       key: 'action',
       render: (_, record) => (
-        <Space>
-          <Button
-            type="primary"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
+        <Space size="small">
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             编辑
+          </Button>
+          <Button type="link" size="small" icon={<UploadOutlined />} onClick={() => handleManageImages(record)}>
+            相册
           </Button>
           <Popconfirm
             title="确定要删除这个酒店吗？"
@@ -218,10 +378,7 @@ function HotelManage() {
             okText="确定"
             cancelText="取消"
           >
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-            >
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
               删除
             </Button>
           </Popconfirm>
@@ -396,6 +553,117 @@ function HotelManage() {
             </Select>
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title="酒店相册管理"
+        open={imageModalVisible}
+        onCancel={() => setImageModalVisible(false)}
+        width={1000}
+        footer={null}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Upload
+            name="file"
+            listType="picture-card"
+            showUploadList={false}
+            action={`${API_BASE}/upload/picture`}
+            headers={{
+              'Authorization': `Bearer ${getToken()}`
+            }}
+            onChange={handleImageUpload}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <div>上传中...</div>
+            ) : (
+              <div>
+                <PlusOutlined />
+                <div style={{ marginTop: 8 }}>上传图片</div>
+              </div>
+            )}
+          </Upload>
+        </div>
+
+        <div style={{ marginBottom: 16, color: '#999', fontSize: 12 }}>
+          提示：拖拽图片可以调整显示顺序
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+          {imageList.map((image) => (
+            <div
+              key={image.id}
+              style={{
+                position: 'relative',
+                width: 200,
+                height: 200,
+                border: draggingImageId === image.id ? '2px dashed #1890ff' : '1px solid #d9d9d9',
+                borderRadius: 8,
+                overflow: 'hidden',
+                cursor: 'move',
+                backgroundColor: '#fafafa'
+              }}
+              draggable
+              onDragStart={(e) => handleImageDragStart(e, image.id)}
+              onDragOver={handleImageDragOver}
+              onDrop={(e) => handleImageDrop(e, image.id)}
+            >
+              <Image
+                src={`${API_BASE}/upload/picture/${image.url}`}
+                alt={image.url}
+                width={200}
+                height={200}
+                preview
+                style={{ objectFit: 'cover' }}
+              />
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => handleDeleteImage(image.id)}
+                style={{
+                  position: 'absolute',
+                  top: 4,
+                  right: 4,
+                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                  color: '#fff',
+                  borderRadius: '50%',
+                  width: 32,
+                  height: 32,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0
+                }}
+              />
+              {draggingImageId === image.id && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(24, 144, 255, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 32,
+                    color: '#1890ff'
+                  }}
+                >
+                  <DragOutlined />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {imageList.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+            暂无图片，请上传
+          </div>
+        )}
       </Modal>
     </Card>
   )

@@ -185,6 +185,11 @@ export default class BookingPage extends Component<{}, BookingState> {
     this.setState({ rooms: newRooms })
   }
 
+  calculateTotalPrice = () => {
+    const { totalPrice, rooms } = this.state
+    return Math.round(parseFloat(totalPrice) * rooms)
+  }
+
   handleGuestNameChange = (e) => {
     this.setState({ guestName: e.detail.value })
   }
@@ -365,7 +370,7 @@ export default class BookingPage extends Component<{}, BookingState> {
             <Text className='hotel-name'>{hotel?.nameZh || ''}</Text>
             <View className='date-range'>
               <Text className='date-text'>
-                {this.formatDateDisplay(checkIn)}周{this.formatWeekday(checkIn)}-{this.formatDateDisplay(checkOut)}周{this.formatWeekday(checkOut)} | {nights}晚
+                {this.formatDateDisplay(checkIn)}（{this.formatWeekday(checkIn)}）-{this.formatDateDisplay(checkOut)}（{this.formatWeekday(checkOut)}） | {nights}晚
               </Text>
             </View>
             <View className='time-info'>
@@ -456,7 +461,7 @@ export default class BookingPage extends Component<{}, BookingState> {
         <View className='booking-footer'>
           <View className='footer-price'>
             <Text className='price-label'>支付总价</Text>
-            <Text className='price-value'>¥{Math.round(parseFloat(totalPrice))}</Text>
+            <Text className='price-value'>¥{this.calculateTotalPrice()}</Text>
           </View>
           <Button
             className='submit-button'
