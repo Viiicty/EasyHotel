@@ -118,7 +118,7 @@ function AuditCenter() {
   const fetchRecentAudits = async () => {
     try {
       const token = getToken()
-      const response = await fetch(`${API_BASE}/hotel-submission/recent-audits?limit=3`, {
+      const response = await fetch(`${API_BASE}/hotel-submission/recent-audits?limit=4`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -186,6 +186,22 @@ function AuditCenter() {
       default:
         return null
     }
+  }
+
+  const formatTime = (date) => {
+    if (!date) return '-'
+    const now = new Date()
+    const orderDate = new Date(date)
+    const diffMs = now - orderDate
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 1) return '刚刚'
+    if (diffMins < 60) return `${diffMins}分钟前`
+    if (diffHours < 24) return `${diffHours}小时前`
+    if (diffDays < 7) return `${diffDays}天前`
+    return orderDate.toLocaleDateString('zh-CN')
   }
 
   const handleAudit = (item) => {
@@ -266,6 +282,7 @@ function AuditCenter() {
           >
             <List
               dataSource={pendingAudits}
+              style={{ height: 400, overflowY: 'auto' }}
               renderItem={(item) => (
                 <List.Item
                   actions={[
@@ -290,9 +307,8 @@ function AuditCenter() {
                     }
                     description={
                       <Space>
-                        <span style={{ fontSize: '14px', color: '#999' }}>
-                          提交时间: {item.createdTime ? new Date(item.createdTime).toLocaleString('zh-CN') : '-'}
-                        </span>
+                        <ClockCircleOutlined style={{ fontSize: '12px', color: '#999' }} />
+                        <span style={{ fontSize: '14px', color: '#666' }}>{formatTime(item.createdTime)}</span>
                       </Space>
                     }
                   />
@@ -322,12 +338,16 @@ function AuditCenter() {
                     description={
                       <div>
                         <Space style={{ marginBottom: '4px' }}>
-                          <span style={{ fontSize: '14px', color: '#999' }}>
-                            审核时间: {item.updatedTime ? new Date(item.updatedTime).toLocaleString('zh-CN') : '-'}
-                          </span>
+                          <ClockCircleOutlined style={{ fontSize: '12px', color: '#999' }} />
+                          <span style={{ fontSize: '14px', color: '#666' }}>{formatTime(item.updatedTime)}</span>
                         </Space>
                         <div style={{ fontSize: '14px', color: item.status === 'APPROVED' ? '#52c41a' : '#ff4d4f' }}>
                           {item.status === 'APPROVED' ? '已通过' : '已驳回'}
+                          {item.status === 'REJECTED' && item.rejectReason && (
+                            <span style={{ marginLeft: '8px', color: '#666' }}>
+                              ({item.rejectReason})
+                            </span>
+                          )}
                         </div>
                       </div>
                     }

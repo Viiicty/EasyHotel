@@ -278,7 +278,7 @@ function Submission() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [filters, setFilters] = useState({
-    status: '审核中',
+    status: '',
     keyword: '',
   })
 
@@ -563,6 +563,12 @@ function Submission() {
       key: 'rejectReason',
       width: 200,
       ellipsis: true,
+      render: (_, record) => (
+        <span>
+          <span style={{ color: '#ff4d4f' }}>驳回原因：</span>
+          <span style={{ color: '#666' }}>{record.rejectReason || '-'}</span>
+        </span>
+      ),
     },
     {
       title: '操作',
@@ -708,7 +714,7 @@ function Submission() {
                   showSizeChanger: true,
                   showTotal: (total) => `共 ${total} 条`,
                 }}
-                scroll={{ x: 1200 }}
+                scroll={{ x: 1200, y: 400 }}
               />
             </TabPane>
             <TabPane tab="房型管理" key="roomtype">
@@ -721,7 +727,7 @@ function Submission() {
                   showSizeChanger: true,
                   showTotal: (total) => `共 ${total} 条`,
                 }}
-                scroll={{ x: 1200 }}
+                scroll={{ x: 1200, y: 400 }}
               />
             </TabPane>
           </Tabs>
@@ -772,7 +778,10 @@ function Submission() {
               {users[selectedRecord.auditorId] || selectedRecord.auditor}
             </Descriptions.Item>
             <Descriptions.Item label="驳回原因" span={2}>
-              {selectedRecord.rejectReason}
+              <span>
+                <span style={{ color: '#ff4d4f' }}>驳回原因：</span>
+                <span style={{ color: '#666' }}>{selectedRecord.rejectReason || '-'}</span>
+              </span>
             </Descriptions.Item>
             <Descriptions.Item label="城市代码">
               {selectedRecord.cityCode}
@@ -845,7 +854,10 @@ function Submission() {
               {users[selectedRecord.auditorId] || selectedRecord.auditor}
             </Descriptions.Item>
             <Descriptions.Item label="驳回原因" span={2}>
-              {selectedRecord.rejectReason}
+              <span>
+                <span style={{ color: '#ff4d4f' }}>驳回原因：</span>
+                <span style={{ color: '#666' }}>{selectedRecord.rejectReason || '-'}</span>
+              </span>
             </Descriptions.Item>
           </Descriptions>
         )}

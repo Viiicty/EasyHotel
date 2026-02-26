@@ -727,12 +727,13 @@
       min-height: 200px;
 
       .hotel-cover {
-        width: 200px;
-        height: 300px;
+        width: 180px;
+        height: 320px;
         min-height: 200px;
         border-radius: 12px;
         flex-shrink: 0;
         background-color: #f0f0f0;
+        object-fit: cover; // 确保图片填充容器而不被拉伸
       }
 
       .hotel-content {

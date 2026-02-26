@@ -111,14 +111,11 @@ function Login() {
             >
               <Checkbox>
                 登录或注册代表您同意我们的
+                <AntLink href="#" target="_blank" style={{ fontSize: '14px', marginLeft: '4px' }}>
+                  隐私政策
+                </AntLink>
               </Checkbox>
             </Form.Item>
-
-            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-              <AntLink href="#" target="_blank" style={{ fontSize: '14px' }}>
-                隐私政策
-              </AntLink>
-            </div>
 
             <Form.Item>
               <Button

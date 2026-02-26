@@ -20,11 +20,9 @@ export default class LoginPage extends Component<{}, LoginState> {
   }
 
   componentDidMount() {
-    console.log('=== LoginPage componentDidMount ===')
   }
 
   componentDidShow() {
-    console.log('=== LoginPage componentDidShow ===')
   }
 
   handlePhoneChange = (e) => {
@@ -38,10 +36,7 @@ export default class LoginPage extends Component<{}, LoginState> {
   handleSendCode = () => {
     const { phone, countdown } = this.state
 
-    console.log('handleSendCode 被调用', { phone, countdown })
-
     if (!phone) {
-      console.log('手机号为空')
       Taro.showToast({
         title: '请输入手机号',
         icon: 'none'
@@ -50,7 +45,6 @@ export default class LoginPage extends Component<{}, LoginState> {
     }
 
     if (!/^1[3-9]\d{9}$/.test(phone)) {
-      console.log('手机号格式不正确', phone)
       Taro.showToast({
         title: '请输入正确的手机号',
         icon: 'none'
@@ -59,15 +53,12 @@ export default class LoginPage extends Component<{}, LoginState> {
     }
 
     if (countdown > 0) {
-      console.log('倒计时中，不能重复发送')
       return
     }
 
-    console.log('开始发送验证码')
     this.setState({ sending: true })
 
     setTimeout(() => {
-      console.log('发送验证码成功')
       this.setState({ countdown: 60, sending: false })
       this.startCountdown()
       Taro.showToast({
@@ -119,10 +110,6 @@ export default class LoginPage extends Component<{}, LoginState> {
     try {
       Taro.showLoading({ title: '登录中...' })
 
-      console.log('=== 开始登录请求 ===')
-      console.log('请求URL:', 'http://localhost:8888/auth/mini/login')
-      console.log('请求数据:', { phone })
-
       const res = await Taro.request({
         url: 'http://localhost:8888/auth/mini/login',
         method: 'POST',
@@ -136,23 +123,8 @@ export default class LoginPage extends Component<{}, LoginState> {
 
       Taro.hideLoading()
 
-      console.log('=== 登录响应 ===')
-      console.log('响应状态码:', res.statusCode)
-      console.log('响应数据:', res.data)
-      console.log('响应数据.data:', res.data?.data)
-      console.log('响应数据.data 是否存在:', !!res.data?.data)
-
       if ((res.statusCode === 200 || res.statusCode === 201) && res.data && res.data.data) {
         const user = res.data.data
-
-        console.log('=== 登录成功 ===')
-        console.log('用户信息:', user)
-        console.log('用户ID:', user.id)
-        console.log('用户Token:', user.access_token)
-        console.log('用户name:', user.name)
-        console.log('用户phone:', user.phone)
-        console.log('用户idCard:', user.idCard)
-        console.log('所有字段:', Object.keys(user))
 
         userService.setUserInfo({
           id: user.id,
@@ -161,8 +133,6 @@ export default class LoginPage extends Component<{}, LoginState> {
           phone: user.phone,
           idCard: user.idCard
         })
-
-        console.log('保存后的用户信息:', userService.getUserInfo())
 
         Taro.showToast({
           title: '登录成功',
@@ -173,8 +143,6 @@ export default class LoginPage extends Component<{}, LoginState> {
           Taro.navigateBack()
         }, 1500)
       } else {
-        console.log('=== 用户不存在，跳转注册 ===')
-        console.log('原因: res.statusCode=', res.statusCode, ', res.data=', res.data, ', res.data.data=', res.data?.data)
         Taro.showModal({
           title: '账号不存在',
           content: '该手机号尚未注册，是否前往注册？',
@@ -191,8 +159,6 @@ export default class LoginPage extends Component<{}, LoginState> {
       }
     } catch (error) {
       Taro.hideLoading()
-      console.error('=== 登录失败 ===')
-      console.error('错误信息:', error)
       Taro.showToast({
         title: '登录失败，请重试',
         icon: 'none'
@@ -205,11 +171,6 @@ export default class LoginPage extends Component<{}, LoginState> {
     const token = userService.getToken()
     const isLoggedIn = userService.isLoggedIn()
 
-    console.log('=== 登录状态 ===')
-    console.log('userId:', userId)
-    console.log('token:', token)
-    console.log('isLoggedIn:', isLoggedIn)
-
     Taro.showModal({
       title: '登录状态',
       content: `userId: ${userId || '未设置'}\ntoken: ${token ? '已设置' : '未设置'}\n登录状态: ${isLoggedIn ? '已登录' : '未登录'}`,
@@ -218,7 +179,6 @@ export default class LoginPage extends Component<{}, LoginState> {
   }
 
   render() {
-    console.log('=== LoginPage render ===')
     const { phone, code, countdown, sending } = this.state
 
     return (

@@ -123,7 +123,7 @@ npm install
 npm start
 ```
 
-PC 管理端将在 `http://localhost:3001` 运行。
+PC 管理端将在 `http://localhost:3000` 运行。
 
 ## 项目结构
 

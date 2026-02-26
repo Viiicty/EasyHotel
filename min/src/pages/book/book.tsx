@@ -370,7 +370,7 @@ export default class BookingPage extends Component<{}, BookingState> {
             <Text className='hotel-name'>{hotel?.nameZh || ''}</Text>
             <View className='date-range'>
               <Text className='date-text'>
-                {this.formatDateDisplay(checkIn)}（{this.formatWeekday(checkIn)}）-{this.formatDateDisplay(checkOut)}（{this.formatWeekday(checkOut)}） | {nights}晚
+                {this.formatDateDisplay(checkIn)}（{this.formatWeekday(checkIn)}）-{this.formatDateDisplay(checkOut)}（{this.formatWeekday(checkOut)}） | {nights || 0}晚
               </Text>
             </View>
             <View className='time-info'>

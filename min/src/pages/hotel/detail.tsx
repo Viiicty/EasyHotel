@@ -55,6 +55,7 @@ export default function HotelDetailPage() {
   const [remainingTime, setRemainingTime] = useState(0)
   const [bookmarkPosition, setBookmarkPosition] = useState({ x: 300, y: 600 })
   const [isDragging, setIsDragging] = useState(false)
+  const [isJustDragged, setIsJustDragged] = useState(false)
   const [showImagePreview, setShowImagePreview] = useState(false)
   const [previewImages, setPreviewImages] = useState<string[]>([])
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0)
@@ -259,7 +260,7 @@ export default function HotelDetailPage() {
   }
 
   const handleBookmarkClick = () => {
-    if (isDragging) return
+    if (isDragging || isJustDragged) return
 
     if (pendingOrder) {
       Taro.navigateTo({
@@ -275,6 +276,7 @@ export default function HotelDetailPage() {
     startPositionX.current = bookmarkPosition.x
     startPositionY.current = bookmarkPosition.y
     setIsDragging(false)
+    setIsJustDragged(false)
   }
 
   const handleBookmarkTouchMove = (e: any) => {
@@ -335,6 +337,13 @@ export default function HotelDetailPage() {
 
     setBookmarkPosition({ x: finalX, y: bookmarkPosition.y })
     setIsDragging(false)
+
+    if (isDragging) {
+      setIsJustDragged(true)
+      setTimeout(() => {
+        setIsJustDragged(false)
+      }, 200)
+    }
 
     Taro.setStorageSync('pendingBookmarkPosition', { x: finalX, y: bookmarkPosition.y })
   }
@@ -1152,7 +1161,7 @@ export default function HotelDetailPage() {
         </View>
         <View className='divider'></View>
         <View className='nights-section'>
-          <Text className='nights-text'>共 {nights} 晚</Text>
+          <Text className='nights-text'>共 {nights || 0} 晚</Text>
         </View>
         <View className='divider'></View>
         <View className='guests-section' onClick={handleGuestClick}>
@@ -1200,7 +1209,10 @@ export default function HotelDetailPage() {
                         className='room-image' 
                         src={pictureUrl} 
                         mode='aspectFill' 
-                        lazyLoad 
+                        lazyLoad
+                        onError={() => {
+                          console.log('房型图片加载失败:', pictureUrl)
+                        }}
                       />
                       {roomPictures.length > 1 && (
                         <View className='image-count-badge'>

@@ -6,6 +6,49 @@ import LocationPicker from '../../components/LocationPicker'
 const { TextArea } = Input
 const API_BASE = '/api'
 
+// 酒店设施映射
+const facilityOptions = [
+  { value: 'wifi', label: '免费 WiFi' },
+  { value: 'parking', label: '免费停车场' },
+  { value: 'swimming', label: '游泳池' },
+  { value: 'gym', label: '健身房' },
+  { value: 'restaurant', label: '餐厅' },
+  { value: 'spa', label: 'SPA' },
+  { value: 'bar', label: '酒吧' },
+  { value: 'coffee', label: '咖啡厅' },
+  { value: 'breakfast', label: '免费早餐' },
+  { value: 'laundry', label: '洗衣服务' },
+  { value: 'dry_cleaning', label: '干洗服务' },
+  { value: 'ironing', label: '熨衣服务' },
+  { value: 'shuttle', label: '班车服务' },
+  { value: 'airport_shuttle', label: '机场班车' },
+  { value: 'car_rental', label: '租车服务' },
+  { value: 'bike_rental', label: '自行车租赁' },
+  { value: 'meeting_room', label: '会议室' },
+  { value: 'banquet', label: '宴会厅' },
+  { value: 'conference', label: '会议中心' },
+  { value: 'business_center', label: '商务中心' },
+  { value: 'front_24h', label: '24小时前台' },
+  { value: 'checkin_24h', label: '24小时入住' },
+  { value: 'luggage_storage', label: '行李寄存' },
+  { value: 'concierge', label: '礼宾服务' },
+  { value: 'currency_exchange', label: '外币兑换' },
+  { value: 'atm', label: 'ATM取款机' },
+  { value: 'safe', label: '保险箱' },
+  { value: 'elevator', label: '电梯' }
+]
+
+// 快捷标签映射
+const tagOptions = [
+  { value: 'family', label: '亲子' },
+  { value: 'luxury', label: '豪华' },
+  { value: 'business', label: '商务' },
+  { value: 'airport', label: '近机场' },
+  { value: 'subway', label: '近地铁' },
+  { value: 'love', label: '适合情侣' },
+  { value: 'car', label: '接送机服务' }
+]
+
 // 城市列表
 const cityOptions = [
   { value: 'beijing', label: '北京' },
@@ -493,24 +536,21 @@ function HotelManage() {
 
           <Form.Item label="酒店设施" name="facilities">
             <Select mode="tags" placeholder="请选择酒店设施" style={{ width: '100%' }}>
-              <Select.Option value="wifi">免费 WiFi</Select.Option>
-              <Select.Option value="parking">免费停车场</Select.Option>
-              <Select.Option value="swimming">游泳池</Select.Option>
-              <Select.Option value="gym">健身房</Select.Option>
-              <Select.Option value="restaurant">餐厅</Select.Option>
-              <Select.Option value="spa">SPA</Select.Option>
+              {facilityOptions.map(facility => (
+                <Select.Option key={facility.value} value={facility.value}>
+                  {facility.label}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
 
           <Form.Item label="快捷标签" name="tags">
             <Select mode="tags" placeholder="请选择快捷标签" style={{ width: '100%' }}>
-              <Select.Option value="family">亲子酒店</Select.Option>
-              <Select.Option value="luxury">豪华酒店</Select.Option>
-              <Select.Option value="business">商务酒店</Select.Option>
-              <Select.Option value="airport">近机场</Select.Option>
-              <Select.Option value="subway">近地铁</Select.Option>
-              <Select.Option value="love">适合情侣</Select.Option>
-              <Select.Option value="car">接送机服务</Select.Option>
+              {tagOptions.map(tag => (
+                <Select.Option key={tag.value} value={tag.value}>
+                  {tag.label}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
 

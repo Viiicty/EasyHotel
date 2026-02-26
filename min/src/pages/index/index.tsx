@@ -456,17 +456,11 @@ export default class Index extends Component<{}, IndexState> {
 
     let finalCheckIn, finalCheckOut
 
-    if (savedCheckIn && savedCheckOut && savedCheckIn === today) {
-      finalCheckIn = savedCheckIn
-      finalCheckOut = savedCheckOut
-      console.log('使用保存的日期')
-    } else {
-      finalCheckIn = defaultCheckIn
-      finalCheckOut = defaultCheckOut
-      Taro.setStorageSync('selectedCheckIn', finalCheckIn)
-      Taro.setStorageSync('selectedCheckOut', finalCheckOut)
-      console.log('使用默认日期')
-    }
+    finalCheckIn = defaultCheckIn
+    finalCheckOut = defaultCheckOut
+    Taro.setStorageSync('selectedCheckIn', finalCheckIn)
+    Taro.setStorageSync('selectedCheckOut', finalCheckOut)
+    console.log('使用默认日期')
 
     console.log('最终入住日期:', finalCheckIn)
     console.log('最终退房日期:', finalCheckOut)

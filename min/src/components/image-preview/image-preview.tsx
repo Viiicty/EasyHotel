@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { View, Text, Image, Swiper, SwiperItem } from '@tarojs/components'
 import './image-preview.scss'
 
@@ -11,14 +11,14 @@ interface ImagePreviewProps {
 }
 
 export default function ImagePreview({ visible, images, currentIndex, onClose, onChange }: ImagePreviewProps) {
-  if (!visible || images.length === 0) {
-    return null
-  }
-
   const handleChange = (e: any) => {
     if (onChange) {
       onChange(e.detail.current)
     }
+  }
+
+  if (!visible || images.length === 0) {
+    return null
   }
 
   return (
@@ -28,6 +28,7 @@ export default function ImagePreview({ visible, images, currentIndex, onClose, o
           <Text className='close-icon'>✕</Text>
         </View>
         <Swiper
+          key={visible ? 'swiper-visible' : 'swiper-hidden'}
           className='image-swiper'
           current={currentIndex}
           onChange={handleChange}
@@ -36,6 +37,7 @@ export default function ImagePreview({ visible, images, currentIndex, onClose, o
           indicatorActiveColor='#fff'
           circular
           catchMove
+          disableTouch={!visible}
         >
           {images.map((imageUrl, index) => (
             <SwiperItem key={index}>
@@ -45,6 +47,8 @@ export default function ImagePreview({ visible, images, currentIndex, onClose, o
                   src={imageUrl}
                   mode='aspectFit'
                   onClick={onClose}
+                  lazyLoad
+                  showMenuByLongpress={false}
                 />
               </View>
             </SwiperItem>

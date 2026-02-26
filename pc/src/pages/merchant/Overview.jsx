@@ -328,7 +328,7 @@ function Overview() {
                   loading={loading}
                 />
               </Col>
-              <Col span={6}>
+              <Col span={8}>
                 <Statistic
                   title="GMV"
                   value={todayGMV}
@@ -336,14 +336,6 @@ function Overview() {
                   precision={2}
                   valueStyle={{ color: '#1890ff' }}
                   loading={loading}
-                />
-              </Col>
-              <Col span={6}>
-                <Statistic
-                  title="入住率"
-                  value={85}
-                  suffix="%"
-                  valueStyle={{ color: '#52c41a' }}
                 />
               </Col>
             </Row>
@@ -378,6 +370,7 @@ function Overview() {
           <Card title="待办事项" bordered={false} style={{ height: '100%' }}>
             <List
               dataSource={combinedItems}
+              style={{ height: 400, overflowY: 'auto' }}
               renderItem={(item) => (
                 <List.Item
                   actions={[

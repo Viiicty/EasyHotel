@@ -97,7 +97,7 @@ export class HotelService {
 
   async findByMerchant(merchantId: string): Promise<HotelEntity[]> {
     return this.hotelRepository.find({ 
-      where: { merchantId, available: 'UP' },
+      where: { merchantId, status: 'APPROVED' },
       order: { createdTime: 'DESC' }
     });
   }
@@ -422,6 +422,8 @@ export class HotelService {
     const page = params.page || 1;
     const pageSize = params.pageSize || 10;
     const skip = (page - 1) * pageSize;
+
+    console.log('分页参数 - page:', page, 'pageSize:', pageSize, 'skip:', skip);
 
     query.skip(skip).take(pageSize);
 

@@ -72,6 +72,7 @@ const getTomorrowDate = () => {
 
 export default class HotelList extends Component<{}, HotelListState> {
   countdownTimer: any = null
+  loadCount: number = 0  // 添加加载计数器
 
   cityPinyinMap: { [key: string]: string } = {
     '北京': 'beijing',
@@ -387,7 +388,7 @@ export default class HotelList extends Component<{}, HotelListState> {
     loadingMore: false,
     hasMore: true,
     page: 1,
-    pageSize: 10,
+    pageSize: 5,
     searchParams: {
       city: '',
       hotelName: '',
@@ -629,6 +630,11 @@ export default class HotelList extends Component<{}, HotelListState> {
   loadInitialHotels = async () => {
     const { searchParams, pageSize } = this.state
 
+    this.loadCount++
+    console.log('=== loadInitialHotels START ===', '调用次数:', this.loadCount)
+    console.log('当前pageSize:', pageSize)
+    console.log('当前hotels数量:', this.state.hotels.length)
+
     this.setState({ loading: true })
 
     try {
@@ -647,19 +653,31 @@ export default class HotelList extends Component<{}, HotelListState> {
         maxPrice: searchParams.maxPrice < 2000 ? searchParams.maxPrice : undefined
       })
 
+      console.log('后端返回数据数量:', result.length)
+      console.log('后端返回数据:', result)
+
       const elapsedTime = Date.now() - startTime
       const minSkeletonTime = 800
       const delayTime = Math.max(0, minSkeletonTime - elapsedTime)
 
       setTimeout(() => {
+        console.log('=== setTimeout 执行 ===')
+        console.log('result:', result)
+        console.log('result.length:', result.length)
+        console.log('pageSize:', pageSize)
+        console.log('result.length >= pageSize:', result.length >= pageSize)
+
         if (result && result.length > 0) {
           this.setState({
             hotels: result,
             page: 1,
             hasMore: result.length >= pageSize
           })
+          console.log('设置hotels数量:', result.length)
+          console.log('设置hasMore:', result.length >= pageSize)
         } else {
           this.setState({ hotels: [], hasMore: false })
+          console.log('设置hasMore: false')
         }
       }, delayTime)
     } catch (error) {
@@ -692,12 +710,19 @@ export default class HotelList extends Component<{}, HotelListState> {
   loadMoreHotels = async () => {
     const { loadingMore, hasMore, page, searchParams, pageSize } = this.state
 
+    console.log('=== loadMoreHotels START ===')
+    console.log('loadingMore:', loadingMore, 'hasMore:', hasMore)
+
     if (loadingMore || !hasMore) return
 
+    console.log('开始加载，设置loadingMore为true')
     this.setState({ loadingMore: true })
+
+    const startTime = Date.now()
 
     try {
       const newPage = page + 1
+      console.log('加载第', newPage, '页')
       const result = await hotelService.searchHotels({
         city: searchParams.city,
         keyword: searchParams.hotelName,
@@ -711,22 +736,30 @@ export default class HotelList extends Component<{}, HotelListState> {
         maxPrice: searchParams.maxPrice < 2000 ? searchParams.maxPrice : undefined
       })
 
-      if (result && result.length > 0) {
-        this.setState({
-          hotels: [...this.state.hotels, ...result],
-          page: newPage,
-          hasMore: result.length >= pageSize
-        })
-      } else {
-        this.setState({ hasMore: false })
-      }
+      console.log('加载完成，返回', result.length, '条数据')
+
+      const minLoadingTime = 880
+      const elapsedTime = Date.now() - startTime
+      const delayTime = Math.max(0, minLoadingTime - elapsedTime)
+
+      setTimeout(() => {
+        if (result && result.length > 0) {
+          this.setState({
+            hotels: [...this.state.hotels, ...result],
+            page: newPage,
+            hasMore: result.length >= pageSize,
+            loadingMore: false
+          })
+        } else {
+          this.setState({ hasMore: false, loadingMore: false })
+        }
+      }, delayTime)
     } catch (error) {
       console.error('加载更多失败:', error)
       Taro.showToast({
         title: '加载失败',
         icon: 'none'
       })
-    } finally {
       this.setState({ loadingMore: false })
     }
   }
@@ -1084,6 +1117,8 @@ export default class HotelList extends Component<{}, HotelListState> {
   render() {
     console.log('=== render called ===')
     const { hotels, searchParams, displayCity, showCityDatePanel, showGuestPanel, showCalendar, loadingMore, hasMore, pendingOrder, remainingTime, bookmarkPosition, showPriceModal, showStarModal, showCityModal, locating } = this.state
+
+    console.log('render - hasMore:', hasMore, 'loadingMore:', loadingMore, 'hotels.length:', hotels.length)
 
     return (
       <View className='hotel-list-page'>

@@ -12,6 +12,7 @@ interface PendingItem {
   roomtypeId?: string;
   hotelName?: string;
   status: string;
+  rejectReason?: string;
   createdTime: Date;
   updatedTime: Date;
 }
@@ -139,6 +140,7 @@ export class HotelSubmissionService {
         roomtypeId: audit.roomtypeId || undefined,
         hotelName: audit.hotel?.nameZh || audit.roomtype?.hotel?.nameZh,
         status: audit.status,
+        rejectReason: audit.rejectReason,
         createdTime: audit.createdTime,
         updatedTime: audit.updatedTime
       });
