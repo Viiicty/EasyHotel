@@ -36,7 +36,12 @@ export default class LoginPage extends Component<{}, LoginState> {
   handleSendCode = () => {
     const { phone, countdown } = this.state
 
+    console.log('=== 登录页发送验证码 ===')
+    console.log('手机号:', phone)
+    console.log('倒计时:', countdown)
+
     if (!phone) {
+      console.log('手机号为空')
       Taro.showToast({
         title: '请输入手机号',
         icon: 'none'
@@ -45,6 +50,7 @@ export default class LoginPage extends Component<{}, LoginState> {
     }
 
     if (!/^1[3-9]\d{9}$/.test(phone)) {
+      console.log('手机号格式不正确', phone)
       Taro.showToast({
         title: '请输入正确的手机号',
         icon: 'none'
@@ -53,12 +59,16 @@ export default class LoginPage extends Component<{}, LoginState> {
     }
 
     if (countdown > 0) {
+      console.log('倒计时中，不能重复发送')
       return
     }
 
+    console.log('开始发送验证码...')
     this.setState({ sending: true })
 
     setTimeout(() => {
+      console.log('✅ 发送验证码成功')
+      console.log('📱 模拟验证码: 123456')
       this.setState({ countdown: 60, sending: false })
       this.startCountdown()
       Taro.showToast({

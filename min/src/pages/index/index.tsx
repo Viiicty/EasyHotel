@@ -892,7 +892,11 @@ export default class Index extends Component<{}, IndexState> {
       'men_only': '男性专用',
       'lgbt_friendly': 'LGBT友好'
     }
-    return labelMap[tag] || tag
+    const label = labelMap[tag] || tag
+    if (!labelMap[tag]) {
+      console.log('标签未找到映射:', tag)
+    }
+    return label
   }
 
   handleCityChange = (e) => {

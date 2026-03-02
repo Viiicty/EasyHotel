@@ -99,13 +99,26 @@ export default function HotelDetailPage() {
 
     if (params?.rooms) {
       finalRooms = parseInt(params.rooms)
+      if (isNaN(finalRooms)) {
+        finalRooms = 1
+      }
     }
     if (params?.adults) {
       finalAdults = parseInt(params.adults)
+      if (isNaN(finalAdults)) {
+        finalAdults = 1
+      }
     }
     if (params?.children) {
       finalChildren = parseInt(params.children)
+      if (isNaN(finalChildren)) {
+        finalChildren = 0
+      }
     }
+
+    console.log('=== 详情页参数解析 ===')
+    console.log('params:', params)
+    console.log('finalRooms:', finalRooms, 'finalAdults:', finalAdults, 'finalChildren:', finalChildren)
 
     setCheckIn(finalCheckIn)
     setCheckOut(finalCheckOut)
@@ -426,6 +439,12 @@ export default function HotelDetailPage() {
       setHotelCovers(hotelCoversData)
       setRoomTypePictures(roomPicturesMap)
       setLoading(false)
+
+      if (hotelDetail && hotelDetail.hotelName) {
+        Taro.setNavigationBarTitle({
+          title: hotelDetail.hotelName
+        })
+      }
 
       console.log('Loading room inventories...')
       await loadRoomInventories(roomTypesData)
@@ -859,6 +878,17 @@ export default function HotelDetailPage() {
 
   const getTagLabel = (tag: string) => {
     const labelMap: { [key: string]: string } = {
+      'wifi': 'WiFi',
+      'parking': '停车场',
+      'swimming': '泳池',
+      'gym': '健身房',
+      'restaurant': '餐厅',
+      'spa': 'SPA',
+      'family': '亲子酒店',
+      'luxury': '豪华酒店',
+      'business': '商务酒店',
+      'airport': '近机场',
+      'subway': '近地铁',
       'beachfront': '海滨酒店',
       'ocean_view': '海景房',
       'mountain_view': '山景房',
@@ -896,20 +926,6 @@ export default function HotelDetailPage() {
       'hearing_impaired': '听力障碍友好',
       'visually_impaired': '视力障碍友好',
       'autism_friendly': '自闭症友好',
-      'family': '亲子酒店',
-      'luxury': '豪华酒店',
-      'business': '商务酒店',
-      'airport': '近机场',
-      'subway': '近地铁',
-      'love': '适合情侣',
-      'car': '接送机服务',
-      'elderly_friendly': '老年友好',
-      'child_friendly': '儿童友好',
-      'teen_friendly': '青少年友好',
-      'adult_only': '成人专用',
-      'women_only': '女性专用',
-      'men_only': '男性专用',
-      'lgbt_friendly': 'LGBT友好',
       'honeymoon': '蜜月酒店',
       'wedding': '婚礼场地',
       'anniversary': '纪念日',
@@ -919,9 +935,98 @@ export default function HotelDetailPage() {
       'reunion': '家庭聚会',
       'corporate_event': '企业活动',
       'team_building': '团队建设',
-      'retreat': '静修'
+      'retreat': '静修',
+      'workshop': '研讨会',
+      'seminar': '研讨会',
+      'conference': '会议',
+      'exhibition': '展览',
+      'trade_show': '贸易展',
+      'fashion_show': '时装秀',
+      'concert': '音乐会',
+      'performance': '演出',
+      'theater': '剧院',
+      'cinema': '电影院',
+      'nightlife': '夜生活',
+      'casino': '赌场',
+      'nightclub': '夜店',
+      'karaoke': '卡拉OK',
+      'live_music': '现场音乐',
+      'dj': 'DJ表演',
+      'comedy': '喜剧表演',
+      'magic_show': '魔术表演',
+      'acrobatics': '杂技表演',
+      'cultural_show': '文化表演',
+      'traditional_show': '传统表演',
+      'folk_show': '民俗表演',
+      'dance_show': '舞蹈表演',
+      'music_show': '音乐表演',
+      'art_exhibition': '艺术展览',
+      'sculpture_exhibition': '雕塑展览',
+      'photography_exhibition': '摄影展览',
+      'craft_market': '手工艺市场',
+      'flea_market': '跳蚤市场',
+      'farmers_market': '农贸市场',
+      'food_market': '食品市场',
+      'night_market': '夜市',
+      'street_food': '街头美食',
+      'food_court': '美食广场',
+      'hawker_center': '小贩中心',
+      'coffee_shop': '咖啡店',
+      'tea_house': '茶馆',
+      'bakery': '面包店',
+      'pastry_shop': '糕点店',
+      'ice_cream': '冰淇淋店',
+      'juice_bar': '果汁吧',
+      'smoothie_bar': '冰沙吧',
+      'wine_bar': '葡萄酒吧',
+      'whiskey_bar': '威士忌吧',
+      'cocktail_bar': '鸡尾酒吧',
+      'beer_garden': '啤酒花园',
+      'brewery': '酿酒厂',
+      'distillery': '蒸馏厂',
+      'winery': '酒庄',
+      'vineyard': '葡萄园',
+      'olive_grove': '橄榄园',
+      'orchard': '果园',
+      'farm': '农场',
+      'ranch': '牧场',
+      'vineyard_tour': '葡萄园游览',
+      'winery_tour': '酒庄游览',
+      'brewery_tour': '酿酒厂游览',
+      'distillery_tour': '蒸馏厂游览',
+      'farm_tour': '农场游览',
+      'orchard_tour': '果园游览',
+      'cooking_class': '烹饪课程',
+      'wine_tasting': '品酒',
+      'beer_tasting': '品啤酒',
+      'cheese_tasting': '品奶酪',
+      'chocolate_tasting': '品巧克力',
+      'coffee_tasting': '品咖啡',
+      'tea_tasting': '品茶',
+      'olive_oil_tasting': '品橄榄油',
+      'honey_tasting': '品蜂蜜',
+      'jam_tasting': '品果酱',
+      'preserves_tasting': '品果脯',
+      'local_food': '当地美食',
+      'regional_cuisine': '地方菜系',
+      'international_cuisine': '国际菜系',
+      'fusion_cuisine': '融合菜系',
+      'molecular_cuisine': '分子料理',
+      'love': '适合情侣',
+      'car': '接送机服务',
+      'elderly_friendly': '老年友好',
+      'child_friendly': '儿童友好',
+      'teen_friendly': '青少年友好',
+      'adult_only': '成人专用',
+      'women_only': '女性专用',
+      'men_only': '男性专用',
+      'lgbt_friendly': 'LGBT友好'
     }
-    return labelMap[tag] || tag
+    const label = labelMap[tag] || tag
+    if (!labelMap[tag]) {
+      console.log('标签未找到映射:', tag)
+    }
+    return label
   }
 
   const handleImageClick = (roomTypeId: string, imageIndex: number = 0) => {
@@ -1080,7 +1185,6 @@ export default function HotelDetailPage() {
                 const imageUrl = image.url.startsWith('http') 
                   ? image.url 
                   : `http://localhost:8888/upload/picture/${image.url}`
-                console.log(`Image ${index}:`, imageUrl)
                 
                 return (
                   <SwiperItem key={image.id || index}>

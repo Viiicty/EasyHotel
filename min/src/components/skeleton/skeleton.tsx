@@ -40,11 +40,16 @@ const Skeleton: React.FC<SkeletonProps> = ({ type = 'card', showContent = false 
           <View className='skeleton-title'>
             {showShimmer && <View className='skeleton-shimmer' />}
           </View>
-          <View className='skeleton-text'>
+          <View className='skeleton-subtitle'>
             {showShimmer && <View className='skeleton-shimmer' />}
           </View>
-          <View className='skeleton-text'>
-            {showShimmer && <View className='skeleton-shimmer' />}
+          <View className='skeleton-info'>
+            <View className='skeleton-info-stars'>
+              {showShimmer && <View className='skeleton-shimmer' />}
+            </View>
+            <View className='skeleton-info-address'>
+              {showShimmer && <View className='skeleton-shimmer' />}
+            </View>
           </View>
           <View className='skeleton-tags'>
             <View className='skeleton-tag'>
@@ -56,6 +61,12 @@ const Skeleton: React.FC<SkeletonProps> = ({ type = 'card', showContent = false 
             <View className='skeleton-tag'>
               {showShimmer && <View className='skeleton-shimmer' />}
             </View>
+            <View className='skeleton-tag'>
+              {showShimmer && <View className='skeleton-shimmer' />}
+            </View>
+          </View>
+          <View className='skeleton-price'>
+            {showShimmer && <View className='skeleton-shimmer' />}
           </View>
         </View>
       </View>

@@ -192,6 +192,7 @@ export default class Calendar extends Component<CalendarProps, CalendarState> {
       const startDate = `${selectedStartDate.getFullYear()}-${String(selectedStartDate.getMonth() + 1).padStart(2, '0')}-${String(selectedStartDate.getDate()).padStart(2, '0')}`
       const endDate = `${selectedEndDate.getFullYear()}-${String(selectedEndDate.getMonth() + 1).padStart(2, '0')}-${String(selectedEndDate.getDate()).padStart(2, '0')}`
       this.props.onConfirm(startDate, endDate)
+      this.props.onClose()
     }
   }
 

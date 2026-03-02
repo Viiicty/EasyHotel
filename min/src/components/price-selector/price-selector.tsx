@@ -166,6 +166,7 @@ export default class PriceSelector extends Component<PriceSelectorProps, PriceSe
     const minPrice = this.sliderValueToPrice(minSliderValue)
     const maxPrice = this.sliderValueToPrice(maxSliderValue)
     this.props.onConfirm(minPrice, maxPrice)
+    this.props.onClose()
   }
 
   render() {

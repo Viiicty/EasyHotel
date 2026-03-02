@@ -442,6 +442,19 @@ export default class HotelList extends Component<{}, HotelListState> {
     console.log('wasLoggedIn:', this.state.wasLoggedIn)
     console.log('isLoggedIn:', isLoggedIn)
 
+    if (savedRooms && isNaN(savedRooms)) {
+      console.log('清除无效的savedRooms:', savedRooms)
+      Taro.removeStorageSync('selectedRooms')
+    }
+    if (savedAdults && isNaN(savedAdults)) {
+      console.log('清除无效的savedAdults:', savedAdults)
+      Taro.removeStorageSync('selectedAdults')
+    }
+    if (savedChildren !== undefined && isNaN(savedChildren)) {
+      console.log('清除无效的savedChildren:', savedChildren)
+      Taro.removeStorageSync('selectedChildren')
+    }
+
     if (searchParams) {
       console.log('有searchParams，解析并加载')
       if (!this.state.isInitialized) {
@@ -452,16 +465,10 @@ export default class HotelList extends Component<{}, HotelListState> {
             parsedParams.checkIn = savedCheckIn
             parsedParams.checkOut = savedCheckOut
           }
-          if (savedRooms) {
-            parsedParams.rooms = savedRooms
-          }
-          if (savedAdults) {
-            parsedParams.adults = savedAdults
-          }
-          if (savedChildren) {
-            parsedParams.children = savedChildren
-          }
-          this.setState({ 
+          parsedParams.rooms = 1
+          parsedParams.adults = 1
+          parsedParams.children = 0
+          this.setState({
             searchParams: parsedParams,
             isInitialized: true
           }, () => {
@@ -499,9 +506,9 @@ export default class HotelList extends Component<{}, HotelListState> {
           ...prevState.searchParams,
           checkIn: savedCheckIn || prevState.searchParams.checkIn,
           checkOut: savedCheckOut || prevState.searchParams.checkOut,
-          rooms: savedRooms || prevState.searchParams.rooms,
-          adults: savedAdults || prevState.searchParams.adults,
-          children: savedChildren !== undefined ? savedChildren : prevState.searchParams.children
+          rooms: 1,
+          adults: 1,
+          children: 0
         },
         wasLoggedIn: isLoggedIn
       }), () => {
@@ -671,12 +678,13 @@ export default class HotelList extends Component<{}, HotelListState> {
           this.setState({
             hotels: result,
             page: 1,
-            hasMore: result.length >= pageSize
+            hasMore: result.length >= pageSize,
+            loading: false
           })
           console.log('设置hotels数量:', result.length)
           console.log('设置hasMore:', result.length >= pageSize)
         } else {
-          this.setState({ hotels: [], hasMore: false })
+          this.setState({ hotels: [], hasMore: false, loading: false })
           console.log('设置hasMore: false')
         }
       }, delayTime)
@@ -898,7 +906,6 @@ export default class HotelList extends Component<{}, HotelListState> {
 
   handleCalendarConfirm = (startDate: string, endDate: string) => {
     this.setState({
-      showCityDatePanel: false,
       searchParams: {
         ...this.state.searchParams,
         checkIn: startDate,
@@ -986,8 +993,6 @@ export default class HotelList extends Component<{}, HotelListState> {
 
   handleStarConfirm = (starLevel: number) => {
     this.setState({
-      showStarModal: false,
-      showCityDatePanel: false,
       searchParams: {
         ...this.state.searchParams,
         starLevel
@@ -1001,8 +1006,6 @@ export default class HotelList extends Component<{}, HotelListState> {
 
   handlePriceConfirm = (minPrice: number, maxPrice: number) => {
     this.setState({
-      showPriceModal: false,
-      showCityDatePanel: false,
       searchParams: {
         ...this.state.searchParams,
         minPrice,
@@ -1013,6 +1016,12 @@ export default class HotelList extends Component<{}, HotelListState> {
 
   handlePriceCancel = () => {
     this.setState({ showPriceModal: false })
+  }
+
+  handleSearch = () => {
+    const { searchParams } = this.state
+    this.setState({ showCityDatePanel: false, showGuestPanel: false, showStarModal: false, showPriceModal: false })
+    this.loadInitialHotels()
   }
 
   handleHotelClick = (hotelId: string) => {
@@ -1116,8 +1125,10 @@ export default class HotelList extends Component<{}, HotelListState> {
 
   render() {
     console.log('=== render called ===')
-    const { hotels, searchParams, displayCity, showCityDatePanel, showGuestPanel, showCalendar, loadingMore, hasMore, pendingOrder, remainingTime, bookmarkPosition, showPriceModal, showStarModal, showCityModal, locating } = this.state
+    const { hotels, searchParams, displayCity, showCityDatePanel, showGuestPanel, showCalendar, loading, loadingMore, hasMore, pendingOrder, remainingTime, bookmarkPosition, showPriceModal, showStarModal, showCityModal, locating } = this.state
 
+    console.log('render - searchParams:', searchParams)
+    console.log('render - rooms:', searchParams.rooms, 'adults:', searchParams.adults, 'children:', searchParams.children)
     console.log('render - hasMore:', hasMore, 'loadingMore:', loadingMore, 'hotels.length:', hotels.length)
 
     return (
@@ -1301,7 +1312,15 @@ export default class HotelList extends Component<{}, HotelListState> {
           onScrollToLower={this.handleScrollToLower}
           lowerThreshold={100}
         >
-          {hotels.length > 0 ? (
+          {loading ? (
+            <>
+              <Skeleton type='card' showContent={true} />
+              <Skeleton type='card' showContent={true} />
+              <Skeleton type='card' showContent={true} />
+              <Skeleton type='card' showContent={true} />
+              <Skeleton type='card' showContent={true} />
+            </>
+          ) : hotels.length > 0 ? (
             <>
               {hotels.map((hotel) => (
                 <View key={hotel.id} className='hotel-card' onClick={() => this.handleHotelClick(hotel.id)}>

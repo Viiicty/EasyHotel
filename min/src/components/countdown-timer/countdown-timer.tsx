@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Text } from '@tarojs/components'
 
 interface CountdownTimerProps {
@@ -10,6 +10,13 @@ interface CountdownTimerProps {
 const CountdownTimer: React.FC<CountdownTimerProps> = ({ initialTime, onTick, onExpire }) => {
   const [remainingTime, setRemainingTime] = useState(initialTime)
   const timerRef = useRef<any>(null)
+  const onExpireRef = useRef(onExpire)
+  const onTickRef = useRef(onTick)
+
+  useEffect(() => {
+    onExpireRef.current = onExpire
+    onTickRef.current = onTick
+  }, [onExpire, onTick])
 
   useEffect(() => {
     setRemainingTime(initialTime)
@@ -17,8 +24,8 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ initialTime, onTick, on
 
   useEffect(() => {
     if (remainingTime <= 0) {
-      if (onExpire) {
-        onExpire()
+      if (onExpireRef.current) {
+        onExpireRef.current()
       }
       return
     }
@@ -26,13 +33,13 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ initialTime, onTick, on
     timerRef.current = setInterval(() => {
       setRemainingTime(prev => {
         const newTime = prev - 1
-        if (onTick) {
-          onTick(newTime)
+        if (onTickRef.current) {
+          onTickRef.current(newTime)
         }
         if (newTime <= 0) {
           clearInterval(timerRef.current)
-          if (onExpire) {
-            onExpire()
+          if (onExpireRef.current) {
+            onExpireRef.current()
           }
         }
         return newTime
@@ -44,7 +51,7 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ initialTime, onTick, on
         clearInterval(timerRef.current)
       }
     }
-  }, [remainingTime, onTick, onExpire])
+  }, [])
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60)
